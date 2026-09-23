@@ -34,6 +34,10 @@ dev = [
     "pillow>=10",
     "pyyaml>=6",
 ]
+# The Windows bundle: packaging/previously-on.spec
+bundle = [
+    "pyinstaller>=6.10",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -45,3 +49,9 @@ packages = ["src/previously_on"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.uv]
+# rapidocr-onnxruntime depends on the full opencv-python (Qt GUI build); we
+# only need opencv-python-headless, and both install into the same cv2/
+# folder. Dropping it keeps one cv2 and ~100 MB out of the Windows bundle.
+override-dependencies = ["opencv-python; sys_platform == 'never'"]

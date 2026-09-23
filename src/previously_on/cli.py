@@ -118,6 +118,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--debug", action="store_true", help="open the webview developer tools")
 
     sub.add_parser("games", help="list available game profiles")
+    sub.add_parser("check", help="check that OCR, capture and the window work on this machine (paste it into an issue)")
     return parser
 
 
@@ -382,6 +383,14 @@ def cmd_games(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_check(_: argparse.Namespace) -> int:
+    from .doctor import failed, report, run_checks
+
+    checks = run_checks()
+    print(report(checks))
+    return 1 if failed(checks) else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     handler = {
@@ -395,6 +404,7 @@ def main(argv: list[str] | None = None) -> int:
         "search": cmd_search,
         "app": cmd_app,
         "games": cmd_games,
+        "check": cmd_check,
     }[args.command]
     return handler(args)
 
