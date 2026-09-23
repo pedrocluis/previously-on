@@ -14,6 +14,8 @@ nav { display: flex; gap: 18px; }
 nav a { color: var(--muted); font-weight: 600; }
 nav a.active, nav a:hover { color: var(--text); text-decoration: none; }
 nav a:first-child { color: var(--accent); }
+select.game { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 8px; font: inherit; font-size: 13px; margin-left: auto; }
 .watch { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; }
 .dot.waiting { background: var(--accent); }

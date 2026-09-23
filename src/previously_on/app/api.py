@@ -2,6 +2,10 @@
 method returns something JSON-serialisable and reports failure as
 ``{"error": ...}`` so the page handles one shape. No webview import here —
 this is what the tests drive.
+
+The window knows every game profile. The screens show one game at a time:
+the one being captured when a capture starts, otherwise the one the player
+picked (``select_game``), otherwise the one played last.
 """
 
 from __future__ import annotations
@@ -10,6 +14,7 @@ import os
 import subprocess
 import sys
 import threading
+from collections.abc import Sequence
 from pathlib import Path
 
 from ..games import GameProfile
@@ -23,13 +28,21 @@ from .watcher import Watcher
 class Api:
     def __init__(
         self,
-        profile: GameProfile,
+        profiles: GameProfile | Sequence[GameProfile],
         data_dir: Path | None,
         watcher: Watcher | None,
         config: AppConfig,
         config_path: Path | None = None,
+        *,
+        game: str | None = None,
     ) -> None:
-        self._profile = profile
+        self._profiles = {p.id: p for p in ((profiles,) if isinstance(profiles, GameProfile) else profiles)}
+        if not self._profiles:
+            raise ValueError("the app needs at least one game profile")
+        if game is not None and game not in self._profiles:
+            raise KeyError(f"unknown game {game!r}")
+        self._selected = game
+        self._followed: str | None = None  # the capture the screens last switched to
         self._data_dir = data_dir
         self._watcher = watcher
         self._config = config
@@ -37,45 +50,73 @@ class Api:
         self._summarize_lock = threading.Lock()
         self._summarizing: dict = {"state": "idle", "session": None, "message": ""}
 
+    # --- which game --------------------------------------------------------
+
+    def _profile(self) -> GameProfile:
+        """The game the screens show. A capture that starts brings them to
+        its game once; the player can switch away and it sticks."""
+        if self._watcher is not None:
+            w = self._watcher.status()
+            if w.get("game") and w.get("session") and w["session"] != self._followed:
+                self._followed = w["session"]
+                self._selected = w["game"]
+        game = self._selected or views.last_played(self._profiles.values(), self._data_dir)
+        return self._profiles.get(game or "", next(iter(self._profiles.values())))
+
+    def games(self) -> dict:
+        return self._guard(
+            lambda: {"games": views.games(self._profiles.values(), self._data_dir), "current": self._profile().id}
+        )
+
+    def select_game(self, game: str) -> dict:
+        if game not in self._profiles:
+            return {"error": f"unknown game {game}"}
+        self._selected = game
+        return {"current": game}
+
     # --- screens -------------------------------------------------------------
 
     def home(self) -> dict:
-        try:
-            out = views.home(self._profile.id, self._data_dir)
-        except Exception as exc:  # noqa: BLE001
-            return {"error": f"{type(exc).__name__}: {exc}"}
-        out["game"] = self._profile.display_name
-        return out
+        def load():
+            p = self._profile()
+            out = views.home(p.id, self._data_dir)
+            out["game"] = p.display_name
+            return out
+
+        return self._guard(load)
 
     def sessions(self) -> dict:
-        return self._guard(lambda: {"sessions": views.sessions(self._profile.id, self._data_dir)})
+        return self._guard(lambda: {"sessions": views.sessions(self._profile().id, self._data_dir)})
 
     def session(self, stamp: str) -> dict:
         def load():
-            out = views.session(self._profile.id, self._data_dir, stamp)
+            out = views.session(self._profile().id, self._data_dir, stamp)
             return out if out is not None else {"error": f"no session {stamp}"}
 
         return self._guard(load)
 
     def timeline(self) -> dict:
-        return self._guard(
-            lambda: {
-                "totals": views.totals(self._profile.id, self._data_dir),
-                "sessions": views.timeline(self._profile.id, self._data_dir),
-            }
-        )
+        def load():
+            game = self._profile().id
+            return {"totals": views.totals(game, self._data_dir), "sessions": views.timeline(game, self._data_dir)}
+
+        return self._guard(load)
 
     def totals(self) -> dict:
-        return self._guard(lambda: views.totals(self._profile.id, self._data_dir))
+        return self._guard(lambda: views.totals(self._profile().id, self._data_dir))
 
     def search(self, query: str, kinds: list[str] | None = None) -> dict:
-        return self._guard(lambda: {"hits": views.search(self._profile.id, self._data_dir, query, kinds)})
+        return self._guard(lambda: {"hits": views.search(self._profile().id, self._data_dir, query, kinds)})
 
     # --- capture ---------------------------------------------------------------
 
     def status(self) -> dict:
         out = self._watcher.status() if self._watcher else {"state": "idle", "running": False, "message": ""}
-        out["game"] = self._profile.display_name
+        captured = self._profiles.get(out.get("game") or "")
+        out["game_id"] = captured.id if captured else None
+        out["game"] = captured.display_name if captured else None  # the game being / last captured
+        out["watching"] = self._watcher.waiting_for() if self._watcher else None
+        out["view"] = self._profile().id  # the game the screens show
         out["summarize"] = dict(self._summarizing)
         return out
 
@@ -96,7 +137,8 @@ class Api:
     def summarize(self, stamp: str) -> dict:
         """Backfill the recap for one session in the background; ``status``
         reports progress under ``summarize``."""
-        log = sessions_dir(self._profile.id, self._data_dir) / f"{stamp}.jsonl"
+        profile = self._profile()
+        log = sessions_dir(profile.id, self._data_dir) / f"{stamp}.jsonl"
         if not log.is_file():
             return {"error": f"no session {stamp}"}
         if not self._summarize_lock.acquire(blocking=False):
@@ -105,7 +147,7 @@ class Api:
 
         def work() -> None:
             try:
-                record, message = summarize_after_run(log, self._profile)
+                record, message = summarize_after_run(log, profile)
                 self._summarizing = {"state": "done" if record else "failed", "session": stamp, "message": message}
             finally:
                 self._summarize_lock.release()

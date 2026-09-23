@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 
 import psutil
 
@@ -16,6 +17,16 @@ def is_running(profile: GameProfile) -> bool:
         if name in wanted:
             return True
     return False
+
+
+def running_profile(profiles: Sequence[GameProfile]) -> GameProfile | None:
+    """The first of ``profiles`` whose process is running, in one pass over
+    the process table; None if none is."""
+    names = {(proc.info.get("name") or "").lower() for proc in psutil.process_iter(["name"])}
+    for profile in profiles:
+        if any(n.lower() in names for n in profile.process_names):
+            return profile
+    return None
 
 
 def wait_until(profile: GameProfile, running: bool, poll: float = 2.0) -> None:

@@ -97,8 +97,11 @@ def build_parser() -> argparse.ArgumentParser:
     se.add_argument("--data-dir", type=Path)
     se.add_argument("--kind", choices=["item", "area", "checkpoint", "boss", "npc"], action="append")
 
-    ap = sub.add_parser("app", help="open the desktop window (resume screen, sessions, timeline) and watch for the game")
-    _add_game_arg(ap)
+    ap = sub.add_parser("app", help="open the desktop window (resume screen, sessions, timeline) and watch for any game")
+    ap.add_argument(
+        "--game",
+        help="watch only this game and open on it (default: every game; a replay defaults to eldenring)",
+    )
     ap.add_argument("--data-dir", type=Path, help="data directory (default: platform user data dir)")
     ap.add_argument("--no-watch", action="store_true", help="only show what is logged; do not capture")
     ap.add_argument("--monitor", type=int, help="monitor to capture (default: from settings)")

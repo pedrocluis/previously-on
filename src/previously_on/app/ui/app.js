@@ -4,7 +4,9 @@
 
 const main = document.getElementById('main');
 const watchBox = document.getElementById('watch');
+const gameSelect = document.getElementById('game');
 let lastStatus = null;
+let viewGame = null;  // the game the screens show (api picks it; see api.py)
 let pollTimer = null;
 
 function esc(s) {
@@ -28,8 +30,8 @@ function errorBox(r) { return `<div class="card error">${esc(r.error)}</div>`; }
 
 function stateLabel(s) {
   switch (s.state) {
-    case 'waiting': return s.message || `Waiting for ${s.game}…`;
-    case 'capturing': return `Capturing · ${plural(s.events, 'event')}`;
+    case 'waiting': return s.message || `Waiting for ${s.watching}…`;
+    case 'capturing': return `Capturing ${s.game} · ${plural(s.events, 'event')}`;
     case 'summarizing': return 'Writing the recap…';
     case 'error': return `Stopped: ${s.message}`;
     default: return s.running ? (s.message || 'Starting…') : 'Not watching';
@@ -39,7 +41,7 @@ function stateLabel(s) {
 function renderWatch(s) {
   const btn = s.running
     ? `<button id="watch-btn" data-action="stop">Stop</button>`
-    : `<button id="watch-btn" data-action="start" class="primary">Watch for ${esc(s.game)}</button>`;
+    : `<button id="watch-btn" data-action="start" class="primary">Watch for ${esc(s.watching && s.watching !== 'a game' ? s.watching : 'games')}</button>`;
   watchBox.innerHTML = `<span class="dot ${esc(s.state)}"></span><span>${esc(stateLabel(s))}</span>${btn}`;
   document.getElementById('watch-btn').onclick = async ev => {
     const r = await call(ev.target.dataset.action === 'stop' ? 'stop_watch' : 'start_watch');
@@ -54,15 +56,43 @@ async function poll() {
   const prev = lastStatus;
   lastStatus = s;
   renderWatch(s);
+  if (s.view !== viewGame) {
+    // A capture started on another game: the screens follow it.
+    await renderGames();
+    if (location.hash.startsWith('#session/')) location.hash = '#home';  // hashchange routes
+    else route();
+    return;
+  }
   const page = location.hash.replace(/^#/, '') || 'home';
+  // A capture ending (recap written or skipped) adds a session to the picker's count.
+  const finished = prev && prev.state === 'summarizing' && s.state !== 'summarizing';
+  if (finished) renderGames();
   if (page === 'home') {
-    // A capture ending (recap written or skipped) changes the resume screen.
-    const finished = prev && prev.state === 'summarizing' && s.state !== 'summarizing';
+    // ...and changes the resume screen.
     const backfilled = prev && prev.summarize.state === 'running' && s.summarize.state !== 'running';
     if (finished || backfilled) renderHome();
     else if (s.state === 'capturing') renderFeed();
   }
 }
+
+// --- game picker (header) ------------------------------------------------------
+
+async function renderGames() {
+  const r = await call('games');
+  if (r.error) return;
+  viewGame = r.current;
+  gameSelect.innerHTML = r.games.map(g =>
+    `<option value="${esc(g.id)}" ${g.id === r.current ? 'selected' : ''}>${esc(g.name)}${g.sessions ? ` (${g.sessions})` : ''}</option>`).join('');
+}
+
+gameSelect.onchange = async () => {
+  const r = await call('select_game', gameSelect.value);
+  if (r.error) { alert(r.error); return; }
+  viewGame = r.current;
+  // A session page belongs to the game it came from.
+  if (location.hash.startsWith('#session/')) location.hash = '#sessions';
+  else route();
+};
 
 // --- home ---------------------------------------------------------------------
 
@@ -126,7 +156,7 @@ async function renderFeed() {
   const box = document.getElementById('feed');
   if (!box) return;
   const s = lastStatus;
-  if (!s || !s.running || s.state === 'waiting') { box.innerHTML = ''; return; }
+  if (!s || !s.running || s.state === 'waiting' || s.game_id !== viewGame) { box.innerHTML = ''; return; }
   const r = await call('recent_events');
   const events = (r.events || []).slice().reverse();
   box.innerHTML = `<h2>${s.state === 'capturing' ? 'This session, live' : 'Last capture'}</h2>
@@ -297,6 +327,7 @@ async function route() {
 
 window.addEventListener('hashchange', route);
 window.addEventListener('pywebviewready', async () => {
+  await renderGames();
   await poll();
   await route();
   pollTimer = setInterval(poll, 2000);

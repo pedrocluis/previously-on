@@ -1,7 +1,9 @@
-"""The capture loop as a background thread: wait for the game, capture a
+"""The capture loop as a background thread: wait for a game, capture a
 session, write the recap, wait again. This is what lets a tester start the
-app and forget about it. Everything game-specific still comes from the
-profile; everything network-bound goes through ``summarize_after_run``.
+app and forget about it. The watcher knows several profiles and captures
+with whichever one's process appears; everything game-specific still comes
+from that profile, everything network-bound goes through
+``summarize_after_run``.
 """
 
 from __future__ import annotations
@@ -9,6 +11,7 @@ from __future__ import annotations
 import sys
 import threading
 from collections import deque
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -16,8 +19,7 @@ from typing import Callable
 
 from ..capture import FrameSource, open_source
 from ..events import Event
-from ..game_process import is_running as _is_running
-from ..game_process import lower_priority
+from ..game_process import lower_priority, running_profile
 from ..games import GameProfile
 from ..pipeline import Detector
 from ..recap.schema import RecapRecord
@@ -34,6 +36,7 @@ RECENT = 50  # events kept for the live feed
 class WatcherStatus:
     state: State = "idle"
     message: str = ""
+    game: str | None = None  # id of the game being captured / last captured
     session: str | None = None  # stamp of the session being captured / just captured
     started: str | None = None
     events: int = 0
@@ -58,30 +61,40 @@ class Watcher:
     finish the current step (the detector closes the log, a recap in flight
     completes) and ``join()`` waits for that.
 
-    ``source_factory`` opens the frame source for a capture; the default is
-    the live screen. With ``wait_for_game=False`` the loop captures once and
-    stops — replay mode, used to drive the UI from a recording on a machine
-    without the game."""
+    ``profiles`` is one profile or several; the loop waits until one of
+    their processes runs (``find_game(candidates)``: the first running one,
+    or None) and captures
+    with that profile until it exits. ``source_factory`` opens the frame
+    source for a capture; the default is the live screen. With
+    ``wait_for_game=False`` the loop captures once with the first profile
+    and stops — replay mode, used to drive the UI from a recording on a
+    machine without the game."""
 
     def __init__(
         self,
-        profile: GameProfile,
+        profiles: GameProfile | Sequence[GameProfile],
         data_dir: Path | None,
         *,
         monitor: int = 1,
         source_factory: Callable[[], FrameSource] | None = None,
         wait_for_game: bool = True,
-        is_running: Callable[[], bool] | None = None,
+        find_game: Callable[[Sequence[GameProfile]], GameProfile | None] = running_profile,
         summarize: Summarizer = summarize_after_run,
         ocr_threads: int = 2,
         low_priority: bool = True,
         get_ocr: Callable[[int], object] | None = None,
     ) -> None:
-        self.profile = profile
+        self.profiles: tuple[GameProfile, ...] = (
+            (profiles,) if isinstance(profiles, GameProfile) else tuple(profiles)
+        )
+        if not self.profiles:
+            raise ValueError("the watcher needs at least one game profile")
+        # The game being captured, or the last one; the only one in replay.
+        self.profile: GameProfile | None = None if wait_for_game else self.profiles[0]
         self.data_dir = data_dir
         self.source_factory = source_factory or (lambda: open_source("screen", monitor=monitor))
         self.wait_for_game = wait_for_game
-        self.is_running = is_running or (lambda: _is_running(profile))
+        self.find_game = find_game
         self.summarize = summarize
         self.ocr_threads = ocr_threads
         self.low_priority = low_priority
@@ -134,13 +147,21 @@ class Watcher:
             for k, v in fields.items():
                 setattr(self._status, k, v)
 
+    def waiting_for(self) -> str:
+        """What the header says the loop is waiting for."""
+        if len(self.profiles) == 1:
+            return self.profiles[0].display_name
+        return "a game"
+
     def _loop(self) -> None:
         try:
             while not self._stop.is_set():
                 if self.wait_for_game:
-                    self._set(state="waiting", message=f"Waiting for {self.profile.display_name}…")
-                    if not self._wait(running=True):
+                    self._set(state="waiting", message=f"Waiting for {self.waiting_for()}…")
+                    profile = self._wait_for_start()
+                    if profile is None:
                         break
+                    self.profile = profile
                 self._capture_one()
                 if not self.wait_for_game:
                     break
@@ -150,13 +171,14 @@ class Watcher:
             return
         self._set(state="idle")  # the message keeps the last outcome
 
-    def _wait(self, running: bool) -> bool:
-        """Block until the game's state matches; False if stopped meanwhile."""
+    def _wait_for_start(self) -> GameProfile | None:
+        """Block until one of the games runs; None if stopped meanwhile."""
         while not self._stop.is_set():
-            if self.is_running() == running:
-                return True
+            profile = self.find_game(self.profiles)
+            if profile is not None:
+                return profile
             self._stop.wait(POLL)
-        return False
+        return None
 
     def _ocr_engine(self):
         if self._ocr is None:
@@ -170,16 +192,19 @@ class Watcher:
         return self._ocr
 
     def _capture_one(self) -> None:
+        profile = self.profile
+        assert profile is not None
         ocr = self._ocr_engine()
         if self.wait_for_game and self.low_priority:
             lower_priority()
         source = self.source_factory()
-        log = SessionLog.open(self.profile.id, source.name, data_dir=self.data_dir)
+        log = SessionLog.open(profile.id, source.name, data_dir=self.data_dir)
         print(f"session log: {log.path}", file=sys.stderr)
         self.recent.clear()
         self._set(
             state="capturing",
-            message=f"Capturing via {source.name}",
+            message=f"Capturing {profile.display_name} via {source.name}",
+            game=profile.id,
             session=session_id(log.path),
             started=datetime.now().isoformat(timespec="seconds"),
             events=0,
@@ -190,10 +215,10 @@ class Watcher:
         )
         game_gone = threading.Event()
         if self.wait_for_game:
-            threading.Thread(target=self._watch_exit, args=(game_gone,), daemon=True).start()
+            threading.Thread(target=self._watch_exit, args=(profile, game_gone), daemon=True).start()
         detector = Detector(
             source,
-            self.profile,
+            profile,
             ocr,
             log,
             on_event=self._record,
@@ -210,13 +235,15 @@ class Watcher:
             file=sys.stderr,
         )
         self._set(state="summarizing", message="Writing the recap…", ocr_calls=stats.ocr_calls, frames=stats.frames)
-        record, message = self.summarize(log.path, self.profile)
+        record, message = self.summarize(log.path, profile)
         print(message, file=sys.stderr)
         self._set(message=message, recap_ready=record is not None)
 
-    def _watch_exit(self, game_gone: threading.Event) -> None:
+    def _watch_exit(self, profile: GameProfile, game_gone: threading.Event) -> None:
+        # Only the captured game's own exit ends the session: another
+        # watched game starting meanwhile does not keep it open.
         while not self._stop.is_set() and not game_gone.is_set():
-            if not self.is_running():
+            if self.find_game((profile,)) is None:
                 game_gone.set()
                 return
             game_gone.wait(POLL)

@@ -13,6 +13,7 @@ from previously_on.app.api import Api
 from previously_on.app.config import AppConfig, mask_key
 from previously_on.app.watcher import Watcher
 from previously_on.capture import Frame
+from previously_on.games import get_profile, list_profiles
 from previously_on.events import Event, EventType
 from previously_on.pipeline import Detector
 from previously_on.recap.provider import FakeProvider
@@ -272,15 +273,63 @@ def test_watcher_replays_once_records_events_and_writes_the_recap(tmp_path, elde
 
 
 def test_watcher_waits_for_the_game_and_stops_when_asked(tmp_path, eldenring):
-    running = {"game": False}
-    w = Watcher(eldenring, tmp_path, is_running=lambda: running["game"], get_ocr=lambda n: NoOcr())
+    w = Watcher(eldenring, tmp_path, find_game=lambda candidates: None, get_ocr=lambda n: NoOcr())
     w.start()
     time.sleep(0.2)
-    assert w.status()["state"] == "waiting"
+    assert w.status()["state"] == "waiting" and w.status()["message"] == "Waiting for Elden Ring…"
     w.stop()
     w.join(5)
     assert not w.running and w.status()["state"] == "idle"
     assert not (tmp_path / "sessions").exists()  # no session was opened
+
+
+def test_watcher_captures_whichever_game_starts_until_that_game_exits(tmp_path, monkeypatch):
+    import previously_on.app.watcher as watcher_mod
+
+    monkeypatch.setattr(watcher_mod, "POLL", 0.05)
+    running: set[str] = set()
+
+    def find_game(candidates):
+        return next((p for p in candidates if p.id in running), None)
+
+    summarized = []
+    w = Watcher(
+        list_profiles(),
+        tmp_path,
+        source_factory=EndlessBlankSource,
+        find_game=find_game,
+        summarize=lambda path, profile: summarized.append(profile.id) or (None, "no key"),
+        get_ocr=lambda n: NoOcr(),
+        low_priority=False,
+    )
+    w.start()
+    time.sleep(0.2)
+    assert w.status()["message"] == "Waiting for a game…" and w.profile is None
+    running.add("ds3")
+    for _ in range(50):
+        if w.status()["state"] == "capturing":
+            break
+        time.sleep(0.05)
+    s = w.status()
+    assert s["state"] == "capturing" and s["game"] == "ds3" and "Dark Souls III" in s["message"]
+    running.add("eldenring")  # another watched game starting does not end the session
+    time.sleep(0.3)
+    assert w.status()["state"] == "capturing" and w.status()["game"] == "ds3"
+    running.discard("ds3")
+    for _ in range(100):
+        if summarized:
+            break
+        time.sleep(0.05)
+    assert summarized == ["ds3"]
+    # Elden Ring is still running, so the next capture is Elden Ring's.
+    for _ in range(100):
+        if w.status()["game"] == "eldenring":
+            break
+        time.sleep(0.05)
+    assert w.status()["game"] == "eldenring"
+    w.stop()
+    w.join(5)
+    assert len(list((tmp_path / "sessions" / "ds3").glob("*.jsonl"))) == 1
 
 
 # --- api ----------------------------------------------------------------------------
@@ -288,10 +337,10 @@ def test_watcher_waits_for_the_game_and_stops_when_asked(tmp_path, eldenring):
 
 def test_api_returns_json_and_reports_errors_as_dicts(tmp_path, eldenring):
     a, b = playthrough(tmp_path, eldenring)
-    api = Api(eldenring, tmp_path, None, AppConfig(), tmp_path / "config.json")
+    api = Api(list_profiles(), tmp_path, None, AppConfig(), tmp_path / "config.json")
     for name, args in [
         ("home", ()), ("sessions", ()), ("session", (a.stem,)), ("timeline", ()), ("totals", ()),
-        ("search", ("miriel",)), ("status", ()), ("recent_events", ()), ("get_settings", ()),
+        ("search", ("miriel",)), ("status", ()), ("recent_events", ()), ("get_settings", ()), ("games", ()),
     ]:
         out = getattr(api, name)(*args)
         json.dumps(out)
@@ -301,6 +350,48 @@ def test_api_returns_json_and_reports_errors_as_dicts(tmp_path, eldenring):
     assert api.start_watch()["error"].startswith("capture is disabled")
     assert api.summarize("nope") == {"error": "no session nope"}
     assert api.status()["state"] == "idle" and api.status()["summarize"]["state"] == "idle"
+
+
+def test_api_shows_the_last_played_game_and_switches_on_request(tmp_path, eldenring):
+    playthrough(tmp_path, eldenring)
+    api = Api(list_profiles(), tmp_path, None, AppConfig())
+    g = api.games()
+    assert g["current"] == "eldenring"  # the only game with sessions
+    assert [x["id"] for x in g["games"]] == [p.id for p in list_profiles()]
+    assert {x["id"]: x["sessions"] for x in g["games"]}["eldenring"] == 2
+    assert api.select_game("ds3") == {"current": "ds3"}
+    home = api.home()
+    assert home["empty"] and home["game"] == "Dark Souls III"
+    assert api.sessions() == {"sessions": []} and api.status()["view"] == "ds3"
+    assert api.select_game("nope")["error"] == "unknown game nope"
+    # --game opens on that game even if another was played last.
+    assert Api(list_profiles(), tmp_path, None, AppConfig(), game="sekiro").games()["current"] == "sekiro"
+
+
+class StubWatcher:
+    def __init__(self):
+        self.state = {"state": "idle", "running": True, "message": "", "game": None, "session": None}
+
+    def status(self):
+        return dict(self.state)
+
+    def waiting_for(self):
+        return "a game"
+
+
+def test_api_follows_a_capture_once_and_then_the_players_pick(tmp_path, eldenring):
+    playthrough(tmp_path, eldenring)
+    w = StubWatcher()
+    api = Api(list_profiles(), tmp_path, w, AppConfig())
+    s = api.status()
+    assert s["view"] == "eldenring" and s["watching"] == "a game" and s["game"] is None
+    w.state.update(state="capturing", game="sekiro", session="20260923-200000")
+    s = api.status()
+    assert s["view"] == "sekiro" and s["game"] == "Sekiro: Shadows Die Twice" and s["game_id"] == "sekiro"
+    api.select_game("eldenring")  # browsing another game mid-capture sticks...
+    assert api.status()["view"] == "eldenring"
+    w.state.update(game="ds2", session="20260923-230000")  # ...until the next capture starts
+    assert api.status()["view"] == "ds2"
 
 
 def test_api_settings_mask_keys_and_validate(tmp_path, eldenring, monkeypatch):
@@ -314,3 +405,16 @@ def test_api_settings_mask_keys_and_validate(tmp_path, eldenring, monkeypatch):
     # An empty key field keeps the stored key; clear_ removes it.
     assert api.save_settings({"openai_api_key": ""})["has_openai_key"]
     assert not api.save_settings({"clear_openai_api_key": True})["has_openai_key"]
+
+
+def test_running_profile_matches_process_names_case_insensitively(monkeypatch):
+    import previously_on.game_process as gp
+
+    class Proc:
+        def __init__(self, name):
+            self.info = {"name": name}
+
+    procs = [Proc("explorer.exe"), Proc("darksoulsiii.exe"), Proc(None)]
+    monkeypatch.setattr(gp.psutil, "process_iter", lambda attrs: iter(procs))
+    assert gp.running_profile(list_profiles()).id == "ds3"
+    assert gp.running_profile([get_profile("eldenring")]) is None

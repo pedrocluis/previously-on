@@ -12,7 +12,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from ..capture import open_source
-from ..games import get_profile
+from ..games import get_profile, list_profiles
 from ..session import default_data_dir
 from .api import Api
 from .config import AppConfig, default_config_path
@@ -38,7 +38,7 @@ def _log_to_file(data_dir: Path | None) -> None:
 
 
 def run_app(
-    game: str = "eldenring",
+    game: str | None = None,
     data_dir: Path | None = None,
     *,
     watch: bool = True,
@@ -55,7 +55,9 @@ def run_app(
 
     if sys.stderr is None:
         _log_to_file(data_dir)
-    profile = get_profile(game)
+    # Live capture watches every game unless one is named; a replay has no
+    # process to tell the game by, so it needs one (Elden Ring by default).
+    profiles = list_profiles()
     config_path = config_path or default_config_path()
     config = AppConfig.load(config_path)
     config.apply_env()
@@ -65,11 +67,12 @@ def run_app(
         live = source in ("screen", "dxcam", "mss")
         mon = monitor or config.monitor
         if live:
-            watcher = Watcher(profile, data_dir, monitor=mon)
+            watcher = Watcher([get_profile(game)] if game else profiles, data_dir, monitor=mon)
         else:
             # Replay: drive the window from a recording, once (no game here).
+            game = game or "eldenring"
             watcher = Watcher(
-                profile,
+                get_profile(game),
                 data_dir,
                 source_factory=lambda: open_source(source, path, fps=fps, seek=start, duration=duration),
                 wait_for_game=False,
@@ -79,16 +82,16 @@ def run_app(
         if config.watch_on_start or not live:
             watcher.start()
 
-    api = Api(profile, data_dir, watcher, config, config_path)
+    api = Api(profiles, data_dir, watcher, config, config_path, game=game)
     window = webview.create_window(
         WINDOW_TITLE, url=str(ui_path()), js_api=api, width=1040, height=760, min_size=(720, 480)
     )
 
     def closing() -> bool:
-        if watcher is not None and watcher.status().get("state") == "capturing":
+        if watcher is not None and watcher.status().get("state") == "capturing" and watcher.profile:
             return bool(
                 window.create_confirmation_dialog(
-                    WINDOW_TITLE, f"{profile.display_name} is still being watched. Stop capturing and close?"
+                    WINDOW_TITLE, f"{watcher.profile.display_name} is still being watched. Stop capturing and close?"
                 )
             )
         return True

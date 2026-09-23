@@ -80,6 +80,25 @@ def _session_row(log: Path, meta: SessionMeta, events: list[Event], stats: Sessi
     }
 
 
+def games(profiles, data_dir: Path | None) -> list[dict]:
+    """Every known game with how many sessions it has and when it was last
+    played (the newest log's stamp; stamps sort across games too), in the
+    profiles' order."""
+    rows = []
+    for p in profiles:
+        logs = list_logs(p.id, data_dir)
+        rows.append(
+            {"id": p.id, "name": p.display_name, "sessions": len(logs), "last": session_id(logs[-1]) if logs else None}
+        )
+    return rows
+
+
+def last_played(profiles, data_dir: Path | None) -> str | None:
+    """Id of the game with the newest session log, or None if nothing is logged."""
+    played = [g for g in games(profiles, data_dir) if g["last"]]
+    return max(played, key=lambda g: g["last"])["id"] if played else None
+
+
 # --- screens ------------------------------------------------------------------
 
 
