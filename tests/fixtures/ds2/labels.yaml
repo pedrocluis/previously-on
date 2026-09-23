@@ -1,0 +1,323 @@
+# Frames from a 1080p60 YouTube playthrough (recordings/ds2/, chunk 00 unless
+# the file name says otherwise), cut at `t` with ffmpeg and labelled from the
+# add-game survey. Frames in the same second as a survey read can miss the
+# banner by a beat; `t` is the offset that shows it on the JPEG as stored.
+
+# -- area reveals (Title Case, mid-screen) -----------------------------------
+- file: area_things_betwixt.jpg
+  t: 284.5
+  expected:
+    - {type: area_discovered, text: Things Betwixt}
+- file: area_majula.jpg
+  t: 705.5
+  expected:
+    - {type: area_discovered, text: Majula}
+- file: area_majula_fade.jpg
+  t: 2045.5                       # mid fade-in, the read is 0.099 tall
+  expected:
+    - {type: area_discovered, text: Majula}
+- file: area_forest_of_fallen_giants.jpg
+  t: 1244.5
+  expected:
+    - {type: area_discovered, text: Forest of Fallen Giants}
+- file: area_forest_return.jpg
+  t: 2223.5                       # second visit; OCR split it in two boxes at t 2224
+  expected:
+    - {type: area_discovered, text: Forest of Fallen Giants}
+
+# -- BONFIRE LIT (caps, lower third) -----------------------------------------
+- file: bonfire_betwixt.jpg
+  t: 663.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: bonfire_second.jpg
+  t: 746.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: bonfire_majula.jpg
+  t: 1277.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: bonfire_forest.jpg
+  t: 1613.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+
+# -- YOU DIED (the death montage, see README) ---------------------------------
+- file: death_montage_12.jpg
+  t: 12                           # recordings/ds2/deaths/gorman_deaths.mp4
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_montage_66.jpg
+  t: 66                           # over a saturated red scene
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_montage_136.jpg
+  t: 136.5                        # fading in
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_montage_148.jpg
+  t: 148
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_montage_200.jpg
+  t: 200
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_montage_227.jpg
+  t: 227
+  expected:
+    - {type: death, text: YOU DIED}
+
+# -- item pickups (dark panel, name left-aligned at x 0.32) -------------------
+- file: item_rusted_coin.jpg
+  t: 303.5
+  expected:
+    - {type: item_acquired, text: Rusted Coin}
+- file: item_human_effigy.jpg
+  t: 573.5                        # from a chest
+  expected:
+    - {type: item_acquired, text: Human Effigy}
+- file: item_morning_star_chime.jpg
+  t: 729.5                        # two rows
+  expected:
+    - {type: item_acquired, text: Morning Star}
+    - {type: item_acquired, text: "Cleric's Sacred Chime"}
+- file: item_stacked_soul_lifegem.jpg
+  t: 753.5                        # read "Soul ofa Nameless Soldier"
+  expected:
+    - {type: item_acquired, text: Soul of a Nameless Soldier}
+    - {type: item_acquired, text: Lifegem}
+- file: item_estus_flask_shard.jpg
+  t: 785.5
+  expected:
+    - {type: item_acquired, text: Estus Flask Shard}
+- file: item_hollow_infantry_helm.jpg
+  t: 1256.5
+  expected:
+    - {type: item_acquired, text: Hollow Infantry Helm}
+- file: item_shortsword_soul.jpg
+  t: 1384.5
+  expected:
+    - {type: item_acquired, text: Shortsword}
+    - {type: item_acquired, text: Soul of a Lost Undead}
+- file: item_soul_torch.jpg
+  t: 1650.5                       # read "Soul ofa Lost Undead"
+  expected:
+    - {type: item_acquired, text: Soul of a Lost Undead}
+    - {type: item_acquired, text: Torch}
+- file: item_radiant_lifegem.jpg
+  t: 1976.5
+  expected:
+    - {type: item_acquired, text: Hand Axe}
+    - {type: item_acquired, text: Radiant Lifegem}
+
+# -- dialogue -----------------------------------------------------------------
+- file: subtitle_splash_narration.jpg
+  t: 2                            # the opening narration under the publisher splash
+  expected:
+    - {type: dialogue}
+- file: subtitle_cutscene_single.jpg
+  t: 540                          # letterboxed cutscene, one row at y 0.78, no HUD
+  expected:
+    - {type: dialogue}
+- file: subtitle_herald_two_rows.jpg
+  t: 600                          # two rows over the "10 Lifegem" label
+  expected:
+    - {type: dialogue}
+- file: subtitle_short.jpg
+  t: 1013
+  expected:
+    - {type: dialogue}
+- file: subtitle_long_line.jpg
+  t: 1127
+  expected:
+    - {type: dialogue}
+- file: subtitle_cale.jpg
+  t: 3114                         # the longest line, x 0.18-0.79
+  expected:
+    - {type: dialogue}
+
+# -- negatives ----------------------------------------------------------------
+- file: neg_splash_from.jpg
+  t: 7                            # FROMSOFTWARE, centred, y 0.50
+  expected: []
+- file: neg_char_name.jpg
+  t: 418                          # "Try to recall your name", centred in the area band
+  expected: []
+- file: neg_menu_inventory.jpg
+  t: 481                          # character creation: gift list with "Human Effigy", "Bonfire Ascetic"
+  expected: []
+- file: neg_prompt_light_bonfire.jpg
+  t: 661                          # "A:Light bonfire" prompt in the lower band
+  expected: []
+- file: neg_tutorial_level_up.jpg
+  t: 905                          # tutorial line at y 0.29
+  expected: []
+- file: neg_level_up_menu.jpg
+  t: 958                          # the Emerald Herald's level-up screen
+  expected: []
+- file: neg_item_description.jpg
+  t: 989                          # inventory with "Drink to restore HP,replenish at bonfires"
+  expected: []
+- file: neg_open_world.jpg
+  t: 1500                         # fight, souls tick "+50", no text events
+  expected: []
+- file: neg_menu_shop.jpg
+  t: 1855                         # Melentia's shop: "Lenigrast's Key" in the item band at x 0.08
+  expected: []
+- file: neg_menu_pick_item.jpg
+  t: 2023                         # inventory, "Pick an item." at x 0.07
+  expected: []
+- file: neg_menu_bonfire.jpg
+  t: 2033                         # bonfire menu titled "Cardinal Tower"
+  expected: []
+- file: neg_menu_bonfire_attune.jpg
+  t: 2700
+  expected: []
+- file: neg_montage_dark_hud.jpg
+  t: 145                          # montage: a near-black scene with the HUD, just before a death
+  expected: []
+
+# -- chunk 01 (Heide's Tower of Flame, the Old Dragonslayer) -------------------
+- file: area_cathedral_of_blue_c01.jpg
+  t: 1088.5
+  expected:
+    - {type: area_discovered, text: Cathedral of Blue}
+- file: boss_old_dragonslayer_c01.jpg
+  t: 1110                         # full bar
+  expected:
+    - {type: boss_engaged, text: Old Dragonslayer}
+- file: boss_old_dragonslayer_hit_c01.jpg
+  t: 1150                         # mid-fight, damage number at the bar's right end
+  expected:
+    - {type: boss_engaged, text: Old Dragonslayer}
+- file: victory_old_dragonslayer_c01.jpg
+  t: 1174.5                       # x 0.23-0.76, the widest banner
+  expected:
+    - {type: boss_defeated, text: VICTORY ACHIEVED}
+- file: item_old_dragonslayer_soul_c01.jpg
+  t: 1177.5                       # the drop, two rows
+  expected:
+    - {type: item_acquired, text: Old Dragonslayer Soul}
+    - {type: item_acquired, text: Old Leo Ring}
+- file: bonfire_c01.jpg
+  t: 1950.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: neg_level_up_c01.jpg
+  t: 450                          # the full level-up table
+  expected: []
+- file: neg_equipment_c01.jpg
+  t: 900                          # equipment screen, stat columns in the item band
+  expected: []
+- file: neg_prompt_bloodstain_c01.jpg
+  t: 1350                         # "A:Touch bloodstain" prompt
+  expected: []
+- file: neg_open_world_heide_c01.jpg
+  t: 1500
+  expected: []
+- file: neg_arena_c01.jpg
+  t: 1800
+  expected: []
+- file: neg_inventory_c01.jpg
+  t: 2400                         # inventory with "Dark Pine Resin" and its description
+  expected: []
+- file: neg_black_c01.jpg
+  t: 3000                         # a near-black corridor, HUD on, no text
+  expected: []
+
+# -- chunk 00 validation run ---------------------------------------------------
+- file: item_homeward_bone_soul.jpg
+  t: 1237                         # read "Soulofa Lost Undead": the small words glued to the tail
+  expected:
+    - {type: item_acquired, text: Homeward Bone}
+    - {type: item_acquired, text: Soul of a Lost Undead}
+- file: item_soul_of_the_pursuer.jpg
+  t: 2888.5                       # the Pursuer's first encounter: no bar, no banner, only the drop
+  expected:
+    - {type: item_acquired, text: Soul of the Pursuer}
+    - {type: item_acquired, text: Ring of Blades}
+- file: item_soul_of_the_last_giant_c01.jpg
+  t: 113.5                        # read "Soulof theLast Giant": a bare "of" glued to the tail, camel case after
+  expected:
+    - {type: item_acquired, text: Soul of the Last Giant}
+    - {type: item_acquired, text: Soldier Key}
+
+# -- chunk 02 (The Lost Bastille, Belfry Luna, Sinners' Rise) ------------------
+- file: boss_ruin_sentinels_three_bars_c02.jpg
+  t: 850                          # three bars 0.0685 apart; Alessia's read slips ("Ruim") on this JPEG
+  expected:
+    - {type: boss_engaged, text: Ruin Sentinel Yahim}
+    - {type: boss_engaged, text: Ruin Sentinel Ricce}
+    - {type: boss_engaged}
+- file: area_sinners_rise_c02.jpg
+  t: 2323.5                       # read "Sinners'Rise", snapped
+  expected:
+    - {type: area_discovered, text: "Sinners' Rise"}
+- file: boss_lost_sinner_c02.jpg
+  t: 2790
+  expected:
+    - {type: boss_engaged, text: The Lost Sinner}
+- file: great_soul_lost_sinner_c02.jpg
+  t: 2853.5                       # a Great One's defeat banner
+  expected:
+    - {type: boss_defeated, text: GREAT SOUL EMBRACED}
+
+# -- chunk 03 (Huntsman's Copse, Harvest Valley, Earthen Peak, Iron Keep) ------
+- file: neg_retrieval_c03.jpg
+  t: 143                          # RETRIEVAL: souls recovered from a bloodstain — a death the recording cut; the boss bar is up
+  expected:
+    - {type: boss_engaged, text: "Executioner's Chariot"}
+- file: neg_invader_banished_c03.jpg
+  t: 540                          # INVADER BANISHED: an NPC invader killed, no bar to credit
+  expected: []
+- file: neg_invasion_notice_c03.jpg
+  t: 2967                         # "Invaded by dark spirit Fencer Sharron!" in the subtitle bar — a notice, not speech
+  expected: []
+- file: neg_invader_name_tag_c03.jpg
+  t: 3005                         # the invader's floating name tag ("Fencer Sharron", h 0.026) crossing the area band
+  expected: []
+
+# -- chunk 04 (Iron Keep, Grave of Saints, The Gutter, Black Gulch) ------------
+- file: neg_vanquished_notice_c04.jpg
+  t: 2801                         # "Darkspirit…hasbeenvanquished." glued to a "Rest at bonfire" prompt
+  expected: []
+- file: neg_invasion_notice_glued_c04.jpg
+  t: 2832                         # the invasion notice glued after a menu fragment ("belluses Invaded by…")
+  expected: []
+- file: item_pharros_lockstone_c04.jpg
+  t: 1658.5                       # read "Pharros'Lockstone": no space after the apostrophe
+  expected:
+    - {type: item_acquired, text: "Pharros' Lockstone"}
+- file: item_smooth_silky_stone_c04.jpg
+  t: 2047                         # read "Smooth&SilkyStone" on the frame the run saw
+  expected:
+    - {type: item_acquired, text: Smooth & Silky Stone}
+
+# -- chunk 06 (Drangleic Castle, Shrine of Amana, Undead Crypt) ----------------
+- file: area_shrine_of_amana_glued_c06.jpg
+  t: 1853                         # read "Shrine ofAmana": respaced, then snapped
+  expected:
+    - {type: area_discovered, text: Shrine of Amana}
+
+# -- chunk 08 (Memories, Throne of Want, the ending and credits) ---------------
+- file: boss_throne_pair_c08.jpg
+  t: 984.5                        # two bars: Throne Defender and Throne Watcher
+  expected:
+    - {type: boss_engaged, text: Throne Defender}
+    - {type: boss_engaged, text: Throne Watcher}
+- file: boss_aldia_c08.jpg
+  t: 1288                         # read "Aldia,Scholar of the First Sin": the comma lost its space
+  expected:
+    - {type: boss_engaged, text: "Aldia, Scholar of the First Sin"}
+- file: subtitle_ending_line_c08.jpg
+  t: 1532                         # a real ending line, during the same sequence as the credits
+  expected:
+    - {type: dialogue}
+- file: neg_credits_c08.jpg
+  t: 1702                         # staff credits: "nabe (Frognation Ltd)" in the subtitle strip
+  expected: []
+- file: neg_licence_c08.jpg
+  t: 2122                         # the licence screen: an address and glued capitals
+  expected: []

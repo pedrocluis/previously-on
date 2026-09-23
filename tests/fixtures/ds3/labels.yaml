@@ -1,0 +1,290 @@
+# Frames from a 1080p60 YouTube playthrough (recordings/ds3/, chunk 00 unless
+# the file name says otherwise), cut at `t` with ffmpeg and labelled from the
+# add-game survey. Frames in the same second as a survey read can miss the
+# banner by a beat; `t` is the offset that shows it on the JPEG as stored.
+# Deaths come from a second recording (see README.md); their `t` is the
+# second within that clip.
+- file: death_kingdd_23.jpg
+  t: 23
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_kingdd_120.jpg
+  t: 120.5
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_kingdd_169.jpg
+  t: 169.5
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_kingdd_208.jpg
+  t: 208.5
+  expected:
+    - {type: death, text: YOU DIED}
+- file: death_kingdd_251.jpg
+  t: 251.5
+  expected:
+    - {type: death, text: YOU DIED}
+- file: heir_gundyr.jpg
+  t: 591
+  expected:
+    - {type: boss_defeated, text: HEIR OF FIRE DESTROYED}
+- file: heir_gundyr_gestures.jpg
+  t: 592.5
+  expected:
+    - {type: boss_defeated, text: HEIR OF FIRE DESTROYED}
+    - {type: item_acquired, text: Coiled Sword}
+- file: heir_vordt.jpg
+  t: 2577.5
+  expected:
+    - {type: boss_defeated, text: HEIR OF FIRE DESTROYED}
+    - {type: item_acquired, text: Soul of Boreal Valley Vordt}
+- file: bonfire_cemetery.jpg
+  t: 438
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: bonfire_gundyr.jpg
+  t: 599.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: bonfire_firelink.jpg
+  t: 734.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: bonfire_highwall.jpg
+  t: 1047.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: bonfire_vordt.jpg
+  t: 2584.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: bonfire_settlement.jpg
+  t: 3132.5
+  expected:
+    - {type: checkpoint_discovered, text: BONFIRE LIT}
+- file: area_cemetery.jpg
+  t: 263
+  expected:
+    - {type: area_discovered, text: Cemetery of Ash}
+- file: area_firelink.jpg
+  t: 673
+  expected:
+    - {type: area_discovered, text: Firelink Shrine}
+- file: area_firelink_2.jpg
+  t: 1922
+  expected:
+    - {type: area_discovered, text: Firelink Shrine}
+- file: area_highwall.jpg
+  t: 1031
+  expected:
+    - {type: area_discovered, text: High Wall of Lothric}
+- file: area_settlement.jpg
+  t: 2658
+  expected:
+    - {type: area_discovered, text: Undead Settlement}
+- file: area_settlement_2.jpg
+  t: 2962
+  expected:
+    - {type: area_discovered, text: Undead Settlement}
+- file: area_settlement_3.jpg
+  t: 2661
+  expected:
+    - {type: area_discovered, text: Undead Settlement}
+- file: boss_gundyr.jpg
+  t: 545
+  expected:
+    - {type: boss_engaged, text: Iudex Gundyr}
+- file: boss_gundyr_2.jpg
+  t: 560
+  expected:
+    - {type: boss_engaged, text: Iudex Gundyr}
+- file: boss_vordt.jpg
+  t: 2530
+  expected:
+    - {type: boss_engaged, text: Vordt of the Boreal Valley}
+- file: item_titanite_shard.jpg
+  t: 507.5
+  expected:
+    - {type: item_acquired, text: Titanite Shard}
+- file: item_stack.jpg
+  t: 1544.5
+  expected:
+    - {type: item_acquired, text: Titanite Shard}
+    - {type: item_acquired, text: Ember}
+- file: item_unknown_traveler.jpg
+  t: 386.5
+  expected:
+    - {type: item_acquired, text: Soul of an Unknown Traveler}
+- file: item_coiled_sword.jpg
+  t: 596
+  expected:
+    - {type: item_acquired, text: Coiled Sword}
+- file: item_coiled_sword_ember_restored.jpg
+  t: 597
+  expected:
+    - {type: item_acquired, text: Coiled Sword}
+- file: item_rest_gesture.jpg
+  t: 442.5
+  expected:
+    - {type: item_acquired, text: Rest}
+- file: item_ember.jpg
+  t: 964.5
+  expected:
+    - {type: item_acquired, text: Ember}
+- file: item_way_of_blue.jpg
+  t: 2348.5
+  expected:
+    - {type: item_acquired, text: Way of Blue}
+- file: item_homeward_bone.jpg
+  t: 638.5
+  expected:
+    - {type: item_acquired, text: Homeward Bone}
+- file: item_ashen_estus.jpg
+  t: 298.5
+  expected:
+    - {type: item_acquired, text: Ashen Estus Flask}
+- file: item_fading_soul.jpg
+  t: 314.5
+  expected:
+    - {type: item_acquired, text: Fading Soul}
+- file: item_binoculars.jpg
+  t: 1201.5
+  expected:
+    - {type: item_acquired, text: Binoculars}
+- file: item_firebomb.jpg
+  t: 3262.5
+  expected:
+    - {type: item_acquired, text: Firebomb}
+- file: subtitle_intro.jpg
+  t: 19
+  expected:
+    - {type: dialogue}
+- file: subtitle_ash.jpg
+  t: 191
+  expected:
+    - {type: dialogue}
+- file: subtitle_ring.jpg
+  t: 2118
+  expected:
+    - {type: dialogue}
+- file: subtitle_tresspassers.jpg
+  t: 2333
+  expected:
+    - {type: dialogue}
+- file: subtitle_lords_of_cinder.jpg
+  t: 2743
+  expected:
+    - {type: dialogue}
+- file: subtitle_pillage.jpg
+  t: 2816
+  expected:
+    - {type: dialogue}
+- file: neg_title.jpg
+  t: 0
+  expected: []
+- file: neg_char_creation.jpg
+  t: 200
+  expected: []
+- file: neg_level_up.jpg
+  t: 780
+  expected: []
+- file: neg_equipment.jpg
+  t: 838
+  expected: []
+- file: neg_inventory.jpg
+  t: 1872
+  expected: []
+- file: neg_bonfire_travel.jpg
+  t: 1009
+  expected: []
+- file: neg_open_world.jpg
+  t: 1200
+  expected: []
+- file: neg_fight.jpg
+  t: 2400
+  expected: []
+- file: neg_invaded.jpg
+  t: 3463
+  expected: []
+- file: neg_souls_retrieved.jpg
+  t: 2026
+  expected: []
+- file: neg_dark_spirit.jpg
+  t: 3595
+  expected: []
+- file: neg_loading.jpg
+  t: 1992
+  expected: []
+- file: neg_loading_2.jpg
+  t: 2959
+  expected: []
+- file: neg_bonfire_menu.jpg
+  t: 846
+  expected: []
+- file: neg_message_prompt.jpg
+  t: 727
+  expected: []
+- file: neg_pillage_prompt.jpg
+  t: 507
+  expected: []
+# Chunk 01 (t = absolute video seconds): the invasion notices are drawn on
+# a panel styled like a pickup's, between the pickup rows.
+- file: neg_invaded_c01.jpg
+  t: 6961.5
+  expected: []
+- file: neg_invader_died_c01.jpg
+  t: 5927
+  expected: []
+# Chunk 02: a glued read ("Cathedralof the Deep") that snaps to the known
+# area; the 2-fps run also saw it split as "Iof the Deep" + "Cathedral".
+- file: area_cathedral_c02.jpg
+  t: 9085.5
+  expected:
+    - {type: area_discovered, text: Cathedral of the Deep}
+    - {type: dialogue}
+# Chunk 03: the Lords of Cinder get their own defeat banner, with the
+# drops still in the panel under it; two area names OCR splits into boxes.
+- file: lord_abyss_watchers_c03.jpg
+  t: 11616
+  expected:
+    - {type: boss_defeated, text: LORD OF CINDER FALLEN}
+    - {type: item_acquired, text: Cinders of a Lord}
+    - {type: item_acquired, text: Soul of the Blood of the Wolf}
+- file: area_irithyll_c03.jpg
+  t: 13527
+  expected:
+    - {type: area_discovered, text: Irithyll of the Boreal Valley}
+- file: area_smouldering_lake_c03.jpg
+  t: 13157.5
+  expected:
+    - {type: area_discovered, text: Smouldering Lake}
+# Chunk 05: two item names respace got wrong — a glued apostrophe, and a
+# correct read ("Horsehoof Ring") that the glued-"of" rule split.
+- file: item_patches_ashes_c05.jpg
+  t: 20419
+  expected:
+    - {type: item_acquired, text: "Patches' Ashes"}
+- file: item_horsehoof_ring_c05.jpg
+  t: 20421.5
+  expected:
+    - {type: item_acquired, text: Winged Spear}
+    - {type: item_acquired, text: Horsehoof Ring}
+# Chunk 06: "World" read as "Wod"; the name snaps at 96.
+- file: area_ariandel_c06.jpg
+  t: 24881
+  expected:
+    - {type: area_discovered, text: Painted World of Ariandel}
+# Chunk 08: the Demon Prince fight starts with two bosses, the second bar
+# raised 0.0602; the upper name also lands in the item crop, cut by its
+# left edge.
+- file: boss_two_bars_c08.jpg
+  t: 29150
+  expected:
+    - {type: boss_engaged, text: Demon from Below}
+    - {type: boss_engaged, text: Demon in Pain}
+# Chunk 09: the final boss's drop, whose glued read passed the Title Case
+# check while the half-spaced one did not.
+- file: item_soul_of_the_lords_c09.jpg
+  t: 34419
+  expected:
+    - {type: item_acquired, text: Soul of the Lords}

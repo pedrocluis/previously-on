@@ -1,0 +1,23 @@
+.venv/
+.idea/
+__pycache__/
+*.pyc
+.pytest_cache/
+calibration/
+# recordings are huge; fixtures (small JPEGs) are committed on purpose
+*.webm
+*.mp4
+*.mkv
+*.mov
+# playthrough chunks, session logs and debug frames from long validation runs
+recordings/
+# env vars
+.env
+# local editor/agent config and personal notes — not part of the public repo
+.mcp.json
+CLAUDE.md
+eldenwatch-mvp.md
+.claude/
+# fixture frames are cut from other people's recordings; labels.yaml and READMEs stay
+tests/fixtures/*/*.jpg
+tests/fixtures/*/*.png

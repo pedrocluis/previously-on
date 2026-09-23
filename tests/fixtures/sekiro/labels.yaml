@@ -1,0 +1,303 @@
+# Sekiro: Shadows Die Twice regression frames. See README.md for where each
+# came from. `t` is the second in the source recording, for re-cutting.
+
+# -- death (死 over the DEATH caption) ---------------------------------------
+- file: death_ingame.jpg
+  t: 1243.0          # chunk 01; the playthrough's own first death, read "EATH"
+  expected:
+    - {type: death, text: DEATH}
+- file: death_01.jpg
+  t: 57.0            # montage
+  expected:
+    - {type: death, text: DEATH}
+- file: death_02.jpg
+  t: 58.5
+  expected:
+    - {type: death, text: DEATH}
+- file: death_03.jpg
+  t: 59.5
+  expected:
+    - {type: death, text: DEATH}
+- file: death_04.jpg
+  t: 296.5
+  expected:
+    - {type: death, text: DEATH}
+- file: death_05.jpg
+  t: 297.0
+  expected:
+    - {type: death, text: DEATH}
+
+# -- boss defeated (忍殺 over SHINOBI EXECUTION; main bosses only) ---------
+- file: defeat_gyoubu.jpg
+  t: 2996.5          # chunk 00; the dying line is on screen with it
+  expected:
+    - {type: boss_defeated, text: SHINOBI EXECUTION}
+    - {type: dialogue}
+- file: defeat_butterfly.jpg
+  t: 5953.5          # chunk 01 t 2353.5
+  expected:
+    - {type: boss_defeated, text: SHINOBI EXECUTION}
+    - {type: dialogue}
+- file: defeat_ape.jpg
+  t: 16179.6         # chunk 04 t 1779.6
+  expected:
+    - {type: boss_defeated, text: SHINOBI EXECUTION}
+- file: defeat_monk.jpg
+  t: 17793.0         # chunk 04 t 3393
+  expected:
+    - {type: boss_defeated, text: SHINOBI EXECUTION}
+
+- file: defeat_truemonk.jpg
+  t: 24182.3         # chunk 06 t 2582.3; the Mortal Blade finisher
+  expected:
+    - {type: boss_defeated, text: IMMORTALITY SEVERED}
+- file: defeat_owl.jpg
+  t: 22834.5         # chunk 06 t 1234.5; Owl (Father), with his dying line
+  expected:
+    - {type: boss_defeated, text: SHINOBI EXECUTION}
+    - {type: dialogue}
+
+- file: defeat_demon.jpg
+  t: 28223.0         # chunk 07 t 3023; the Demon of Hatred
+  expected:
+    - {type: boss_defeated, text: SHINOBI EXECUTION}
+
+# -- checkpoint (鬼仏見出 over SCULPTOR'S IDOL FOUND) -------------------------
+- file: checkpoint_01.jpg
+  t: 1341.2
+  expected:
+    - {type: checkpoint_discovered, text: "SCULPTOR'S IDOL FOUND"}
+- file: checkpoint_02.jpg
+  t: 1341.6
+  expected:
+    - {type: checkpoint_discovered, text: "SCULPTOR'S IDOL FOUND"}
+- file: checkpoint_03.jpg
+  t: 1474.2          # a pickup is still on screen beside the banner
+  expected:
+    - {type: checkpoint_discovered, text: "SCULPTOR'S IDOL FOUND"}
+    - {type: item_acquired, text: Ceramic Shard}
+
+# -- area reveals ------------------------------------------------------------
+- file: area_reservoir.jpg
+  t: 313.5
+  expected:
+    - {type: area_discovered, text: Ashina Reservoir}
+- file: area_outskirts.jpg
+  t: 1333.5
+  expected:
+    - {type: area_discovered, text: Ashina Outskirts}
+
+- file: area_hirata.jpg
+  t: 831.0           # chunk 01
+  expected:
+    - {type: area_discovered, text: Hirata Estate}
+- file: area_castle.jpg
+  t: 3149.0          # chunk 01
+  expected:
+    - {type: area_discovered, text: Ashina Castle}
+
+- file: area_fountainhead.jpg
+  t: 25996.0         # chunk 07 t 796; the JPEG reads "Palacc" and must snap
+  expected:
+    - {type: area_discovered, text: Fountainhead Palace}
+
+# -- boss bars (top-left, name under the HP bar) -----------------------------
+- file: boss_ogre.jpg
+  t: 2250.0
+  expected:
+    - {type: boss_engaged, text: Chained Ogre}
+- file: boss_perilous.jpg
+  t: 2199.0          # the 危 mark flashes over the area band mid-fight
+  expected:
+    - {type: boss_engaged, text: Chained Ogre}
+- file: boss_genichiro.jpg
+  t: 899.0           # a longer bar than the Ogre's: the end caps move
+  expected:
+    - {type: boss_engaged, text: Genichiro Ashina}
+- file: boss_naomori.jpg
+  t: 1528.0
+  expected:
+    - {type: boss_engaged, text: General Naomori Kawarada}
+- file: boss_tenzen.jpg
+  t: 2405.0          # a bright scene: light columns all over the strip
+  expected:
+    - {type: boss_engaged, text: General Tenzen Yamauchi}
+- file: boss_shigenori.jpg
+  t: 656.0
+  expected:
+    - {type: boss_engaged, text: Leader Shigenori Yamauchi}
+- file: boss_gyoubu.jpg
+  t: 2900.0
+  expected:
+    - {type: boss_engaged, text: Gyoubu Oniwa}
+- file: boss_juzou.jpg
+  t: 43.0            # montage; an NPC shouts over the fight
+  expected:
+    - {type: boss_engaged, text: Juzou the Drunkard}
+    - {type: dialogue}
+
+- file: area_senpou.jpg
+  t: 10096.0         # chunk 02 t 2896; a comma and an abbreviation
+  expected:
+    - {type: area_discovered, text: "Senpou Temple, Mt. Kongo"}
+
+- file: boss_butterfly.jpg
+  t: 2240.5          # chunk 01
+  expected:
+    - {type: boss_engaged, text: Lady Butterfly}
+- file: boss_bull.jpg
+  t: 3156.0          # chunk 01
+  expected:
+    - {type: boss_engaged, text: Blazing Bull}
+
+- file: boss_jinsuke.jpg
+  t: 7686.0          # chunk 02 t 486; the dash in the name must survive
+  expected:
+    - {type: boss_engaged, text: "Ashina Elite - Jinsuke Saze"}
+- file: boss_sevenspears.jpg
+  t: 9612.0          # chunk 02 t 2412; OCR glues the dash to the next word
+  expected:
+    - {type: boss_engaged, text: "Seven Ashina Spears - Shikibu Toshikatsu Yamauchi"}
+- file: boss_tomoe.jpg
+  t: 7980.5          # chunk 02 t 780.5; a phase rename of Genichiro's bar
+  expected:
+    - {type: boss_engaged, text: "Genichiro, Way of Tomoe"}
+
+- file: boss_armored.jpg
+  t: 10862.0         # chunk 03 t 62; a bar with no deathblow pips at all
+  expected:
+    - {type: boss_engaged, text: Armored Warrior}
+- file: boss_monkeys.jpg
+  t: 12200.0         # chunk 03 t 1400; likewise, and a puzzle boss
+  expected:
+    - {type: boss_engaged, text: Folding Screen Monkeys}
+- file: boss_masanaga.jpg
+  t: 18969.0         # chunk 05 t 969; a compound the dash rule must not split
+  expected:
+    - {type: boss_engaged, text: "Lone Shadow Masanaga the Spear-Bearer"}
+    - {type: dialogue}
+- file: boss_owl.jpg
+  t: 20791.0         # chunk 05 t 2791; a title and a name, spaced
+  expected:
+    - {type: boss_engaged, text: "Great Shinobi - Owl"}
+    - {type: dialogue}
+- file: boss_orin.jpg
+  t: 17337.5         # chunk 04 t 2937.5; one letter before the apostrophe
+  expected:
+    - {type: boss_engaged, text: "O'Rin of the Water"}
+
+- file: boss_isshin.jpg
+  t: 28498.0         # chunk 07 t 3298; the final boss
+  expected:
+    - {type: boss_engaged, text: "Isshin, the Sword Saint"}
+
+# -- item pickups (right-aligned list on the right edge) ---------------------
+- file: item_pellet.jpg
+  t: 600.0
+  expected:
+    - {type: item_acquired, text: Pellet}
+- file: item_letter.jpg
+  t: 305.0
+  expected:
+    - {type: item_acquired, text: Ornamental Letter}
+- file: item_stack2.jpg
+  t: 580.0
+  expected:
+    - {type: item_acquired, text: Kusabimaru}
+    - {type: item_acquired, text: Healing Gourd}
+- file: item_stack3.jpg
+  t: 2275.5          # three rows; two of them arrive glued
+  expected:
+    - {type: item_acquired, text: Prayer Bead}
+    - {type: item_acquired, text: Shinobi Medicine Rank 1}
+    - {type: item_acquired, text: Mibu Balloon of Wealth}
+- file: item_memory.jpg
+  t: 3011.0          # the drop that proves the Gyoubu Oniwa kill
+  expected:
+    - {type: item_acquired, text: "Memory: Gyoubu Oniwa"}
+    - {type: item_acquired, text: Mechanical Barrel}
+- file: item_remnant.jpg
+  t: 3033.5          # the colon must survive _strip_edges
+  expected:
+    - {type: item_acquired, text: "Remnant: Gyoubu"}
+- file: item_medicine.jpg
+  t: 2272.0
+  expected:
+    - {type: item_acquired, text: Prayer Bead}
+    - {type: item_acquired, text: Shinobi Medicine Rank 1}
+
+- file: item_axe.jpg
+  t: 316.0           # chunk 01; "Axeof the Monkey" in the live read
+  expected:
+    - {type: item_acquired, text: Shinobi Axe of the Monkey}
+
+# -- dialogue ---------------------------------------------------------------
+- file: dialogue_field.jpg
+  t: 335.0           # eavesdropping: the upper subtitle band
+  expected:
+    - {type: dialogue}
+- file: dialogue_genichiro.jpg
+  t: 927.0           # upper band during a boss fight
+  expected:
+    - {type: dialogue}
+    - {type: boss_engaged, text: Genichiro Ashina}
+- file: dialogue_sculptor.jpg
+  t: 133.0           # probe.webm; the longest line seen, x 0.178-0.821
+  expected:
+    - {type: dialogue}
+- file: dialogue_cutscene.jpg
+  t: 111.0           # montage
+  expected:
+    - {type: dialogue}
+- file: dialogue_long.jpg
+  t: 175.0           # montage
+  expected:
+    - {type: dialogue}
+- file: dialogue_npc.jpg
+  t: 1802.0
+  expected:
+    - {type: dialogue}
+
+# -- negatives --------------------------------------------------------------
+- file: neg_readscreen.jpg
+  t: 300.0           # the key-item reading screen, full of sentences
+  expected: []
+- file: neg_statusmenu.jpg
+  t: 586.0           # character status: Unseen Aid, Vitality, Attack Power
+  expected: []
+- file: neg_itemdesc.jpg
+  t: 2261.0          # an item description panel, centre screen
+  expected: []
+- file: neg_intro_card.jpg
+  t: 5.0             # the channel's card: "gamer's little PLAYGROUND"
+  expected: []
+- file: neg_openworld.jpg
+  t: 2140.0          # open world, no text
+  expected: []
+- file: neg_warning.jpg
+  t: 1.0             # montage; the start-up epilepsy WARNING
+  expected: []
+- file: neg_equipmenu.jpg
+  t: 1080.0          # the equipment menu: its frame has light end caps
+  expected: []
+- file: neg_confirm_box.jpg
+  t: 1142.5          # chunk 01; a YES/NO box drawn in the subtitle band
+  expected: []
+- file: neg_notice_box.jpg
+  t: 1148.5          # chunk 01; the notice that follows it
+  expected: []
+- file: neg_outro_card.jpg
+  t: 28910.0         # chunk 07 t 3710; the channel's outro, not game credits
+  expected: []
+- file: neg_skills_desc.jpg
+  t: 2570.5          # chunk 01; Acquire Skills — its description panel ends
+  expected: []       # at the same x as an item name
+- file: neg_skills_desc2.jpg
+  t: 3297.5          # chunk 01; four of the panel's lines inside the item crop
+  expected: []
+- file: neg_menu_armtools.jpg
+  t: 3274.0          # "Create Arm Tools" sits exactly where a boss name does
+  expected: []
+- file: neg_menu_skills.jpg
+  t: 3370.0          # "Acquire Skills", same place
+  expected: []

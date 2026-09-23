@@ -1,0 +1,343 @@
+# Frames from a 1080p60 YouTube playthrough (recordings/dsr/, chunk 00 unless
+# the file name says otherwise), cut at `t` with ffmpeg and labelled from the
+# add-game survey. Frames in the same second as a survey read can miss the
+# banner by a beat; `t` is the offset that shows it on the JPEG as stored.
+- file: victory_asylum_demon.jpg
+  t: 580
+  expected:
+    - {type: boss_defeated, text: VICTORY ACHIEVED}
+    - {type: item_acquired, text: "Big Pilgrim's Key"}
+- file: victory_taurus_demon.jpg
+  t: 1791
+  expected:
+    - {type: boss_defeated, text: VICTORY ACHIEVED}
+- file: victory_gargoyles.jpg
+  t: 3169
+  expected:
+    - {type: boss_defeated, text: VICTORY ACHIEVED}
+    - {type: item_acquired, text: Gargoyle Helm}
+- file: bonfire_asylum.jpg
+  t: 354
+  expected:
+    - {type: checkpoint_discovered}
+- file: bonfire_02.jpg
+  t: 1420
+  expected:
+    - {type: checkpoint_discovered}
+- file: bonfire_03.jpg
+  t: 2013.5
+  expected:
+    - {type: checkpoint_discovered}
+- file: bonfire_04_mangled.jpg   # survey read "EBONFIRE LIT"
+  t: 2512
+  expected:
+    - {type: checkpoint_discovered}
+- file: area_northern_undead_asylum.jpg
+  t: 316.5
+  expected:
+    - {type: area_discovered, text: Northern Undead Asylum}
+- file: area_firelink_shrine.jpg   # tutorial popup "In Lordran, level up and kindle at bonfires" above the banner
+  t: 673.5
+  expected:
+    - {type: area_discovered, text: Firelink Shrine}
+- file: area_firelink_02.jpg
+  t: 2771
+  expected:
+    - {type: area_discovered, text: Firelink Shrine}
+- file: area_undead_burg.jpg
+  t: 1203.5
+  expected:
+    - {type: area_discovered, text: Undead Burg}
+- file: area_undead_parish.jpg
+  t: 2011
+  expected:
+    - {type: area_discovered, text: Undead Parish}
+- file: area_darkroot_garden.jpg   # OCR splits it "Darkroot" / "t Garden"
+  t: 3472
+  expected:
+    - {type: area_discovered, text: Darkroot Garden}
+- file: area_darkroot_basin.jpg
+  t: 3499
+  expected:
+    - {type: area_discovered, text: Darkroot Basin}
+- file: boss_bar_asylum_demon.jpg
+  t: 550
+  expected:
+    - {type: boss_engaged, text: Asylum Demon}
+- file: boss_bar_taurus_demon.jpg
+  t: 1739
+  expected:
+    - {type: boss_engaged, text: Taurus Demon}
+- file: boss_bar_gargoyles_two.jpg   # two bars, the second one raised
+  t: 3166.5
+  expected:
+    - {type: boss_engaged, text: Bell Gargoyle}
+- file: item_large_soul.jpg
+  t: 888
+  expected:
+    - {type: item_acquired, text: Large Soul of a Lost Undead}
+- file: item_stacked_humanity_bone.jpg   # two pickups stacked upward
+  t: 1795
+  expected:
+    - {type: item_acquired, text: Humanity}
+    - {type: item_acquired, text: Homeward Bone}
+- file: item_soul_nameless_soldier.jpg
+  t: 2024.5
+  expected:
+    - {type: item_acquired, text: Soul of a Nameless Soldier}
+- file: item_twin_humanities.jpg
+  t: 3173
+  expected:
+    - {type: item_acquired, text: Twin Humanities}
+- file: subtitle_intro_wide.jpg   # cutscene, no HUD, x 0.22-0.78
+  t: 204
+  expected:
+    - {type: dialogue}
+- file: subtitle_npc_over_estus.jpg   # drawn over the "Estus Flask" label
+  t: 3255
+  expected:
+    - {type: dialogue}
+- file: subtitle_oscar.jpg
+  t: 420
+  expected:
+    - {type: dialogue}
+- file: subtitle_crestfallen_wide.jpg
+  t: 433
+  expected:
+    - {type: dialogue}
+- file: subtitle_two_lines.jpg
+  t: 714
+  expected:
+    - {type: dialogue}
+- file: subtitle_short.jpg
+  t: 2605
+  expected:
+    - {type: dialogue}
+# Negatives: big or plausible text that is not an event.
+- file: neg_menu_equipment.jpg
+  t: 1043
+  expected: []
+- file: neg_menu_inventory.jpg
+  t: 1055
+  expected: []
+- file: neg_menu_level_up.jpg   # "Physical Def.  84  84" lands in the item crop
+  t: 1080
+  expected: []
+- file: neg_menu_shop.jpg
+  t: 1324
+  expected: []
+- file: neg_menu_shop_arrows.jpg
+  t: 1327
+  expected: []
+- file: neg_menu_blacksmith.jpg
+  t: 3394
+  expected: []
+- file: neg_menu_forge.jpg   # weapon names and numbers in every region
+  t: 2578
+  expected: []
+- file: neg_humanity_restored.jpg   # same font and band as the event banners
+  t: 1092.5
+  expected: []
+- file: neg_tutorial_popup.jpg   # "In Lordran, level up and kindle at bonfires", y 0.30
+  t: 672
+  expected: []
+- file: neg_open_world.jpg
+  t: 1000
+  expected: []
+- file: neg_cutscene_black.jpg
+  t: 24
+  expected: []
+- file: neg_no_text.jpg
+  t: 3220
+  expected: []
+# Deaths: the playthrough edits its deaths out, so these are from a second
+# recording (a streamer's death compilation, 1080p60, game inset in a stream
+# layout) rectified to the native layout — see README.md. `t` is the second
+# within recordings/dsr/deaths/octo_deaths.mp4.
+- file: death_octo_50.jpg
+  t: 50
+  expected:
+    - {type: death}
+- file: death_octo_76.jpg
+  t: 76
+  expected:
+    - {type: death}
+- file: death_octo_141.jpg
+  t: 141
+  expected:
+    - {type: death}
+- file: death_octo_173.5.jpg
+  t: 173.5
+  expected:
+    - {type: death}
+# Chunk 01 (`t` within recordings/dsr/er_01.webm).
+- file: victory_moonlight_butterfly_c01.jpg
+  t: 464
+  expected:
+    - {type: boss_defeated, text: VICTORY ACHIEVED}
+- file: victory_capra_demon_c01.jpg
+  t: 1372
+  expected:
+    - {type: boss_defeated, text: VICTORY ACHIEVED}
+    - {type: item_acquired, text: Key to Depths}
+- file: area_depths_c01.jpg   # read "'Depths": the flourish glues on as a quote
+  t: 1405
+  expected:
+    - {type: area_discovered, text: Depths}
+- file: area_blighttown_c01.jpg
+  t: 2616
+  expected:
+    - {type: area_discovered, text: Blighttown}
+- file: boss_bar_moonlight_butterfly_c01.jpg
+  t: 431
+  expected:
+    - {type: boss_engaged, text: Moonlight Butterfly}
+- file: boss_bar_capra_demon_c01.jpg
+  t: 1330
+  expected:
+    - {type: boss_engaged, text: Capra Demon}
+- file: boss_bar_gaping_dragon_c01.jpg
+  t: 2420
+  expected:
+    - {type: boss_engaged, text: Gaping Dragon}
+- file: retrieval_during_capra_c01.jpg   # RETRIEVAL banner (stoplisted) with the Capra bar still up
+  t: 1353.5
+  expected:
+    - {type: boss_engaged, text: Capra Demon}
+- file: neg_humanity_acquired_c01.jpg
+  t: 2165.5
+  expected: []
+- file: neg_forge_confirm_c01.jpg   # "Reinforce Black Knight Sword+2 into Black Knight Sword+3?" dialog
+  t: 598
+  expected: []
+- file: neg_phantom_summoned_c01.jpg   # "Phantom Witch Beatrice summoned" notice on the item row
+  t: 399
+  expected: []
+- file: neg_phantom_name_tag_c01.jpg   # the phantom's floating name tag drifts onto the item row, Moonlight Butterfly bar up
+  t: 434
+  expected:
+    - {type: boss_engaged, text: Moonlight Butterfly}
+# Chunk 02 (`t` within recordings/dsr/er_02.webm).
+- file: area_valley_of_drakes_c02.jpg
+  t: 188
+  expected:
+    - {type: area_discovered, text: Valley of Drakes}
+- file: area_sens_fortress_c02.jpg
+  t: 1912.5
+  expected:
+    - {type: area_discovered, text: "Sen's Fortress"}
+- file: area_anor_londo_c02.jpg
+  t: 3129.5
+  expected:
+    - {type: area_discovered, text: Anor Londo}
+- file: area_undead_parish_misread_c02.jpg   # read "Undead Rarish", snapped to the known name
+  t: 1807
+  expected:
+    - {type: area_discovered, text: Undead Parish}
+# Chunk 03 (`t` within recordings/dsr/er_03.webm).
+- file: death_sif_c03.jpg   # the playthrough's first unedited death; Sif's bar is still up but the HP bar is empty, so the HUD gate holds the (already logged) boss back
+  t: 2324
+  expected:
+    - {type: death}
+- file: boss_bar_ornstein_smough_c03.jpg   # two bars: Smough below, Ornstein raised
+  t: 1519
+  expected:
+    - {type: boss_engaged, text: Executioner Smough}
+    - {type: boss_engaged, text: Dragon Slayer Ornstein}
+- file: item_stacked_gargoyle_drops_c03.jpg   # two drops scoring 80 on similarity; both are events
+  t: 33.5
+  expected:
+    - {type: item_acquired, text: "Gargoyle's Shield"}
+    - {type: item_acquired, text: Gargoyle Helm}
+- file: area_new_londo_ruins_c03.jpg
+  t: 2805
+  expected:
+    - {type: area_discovered, text: New Londo Ruins}
+- file: area_the_abyss_c03.jpg
+  t: 3519
+  expected:
+    - {type: area_discovered, text: The Abyss}
+- file: boss_bar_four_kings_c03.jpg
+  t: 3526
+  expected:
+    - {type: boss_engaged, text: Four Kings}
+- file: neg_solaire_summon_tag_c03.jpg   # "Knight Solaire" summon tag in the banner band, too short
+  t: 1467.5
+  expected: []
+# Chunk 04 (`t` within recordings/dsr/er_04.webm).
+- file: area_firelink_altar_c04.jpg   # read "Firelik Altar" on this JPEG, snapped to the known name
+  t: 440
+  expected:
+    - {type: area_discovered, text: Firelink Altar}
+- file: area_dukes_archives_c04.jpg
+  t: 1022
+  expected:
+    - {type: area_discovered, text: "The Duke's Archives"}
+- file: area_crystal_cave_c04.jpg   # the ornament between the words reads as a hyphen: "Crystal-Cave"
+  t: 2413
+  expected:
+    - {type: area_discovered, text: Crystal Cave}
+- file: boss_bar_seath_c04.jpg
+  t: 2671
+  expected:
+    - {type: boss_engaged, text: Seath the Scaleless}
+- file: boss_bar_ceaseless_discharge_c04.jpg
+  t: 3090
+  expected:
+    - {type: boss_engaged, text: Ceaseless Discharge}
+- file: item_stacked_gold_hemmed_c04.jpg
+  t: 3063
+  expected:
+    - {type: item_acquired, text: Gold-Hemmed Black Gloves}
+    - {type: item_acquired, text: Gold-Hemmed Black Skirt}
+# Chunk 05 (`t` within recordings/dsr/er_05.webm).
+- file: area_tomb_of_the_giants_two_lines_c05.jpg   # the name wraps onto two lines
+  t: 2076.5
+  expected:
+    - {type: area_discovered, text: Tomb of the Giants}
+- file: area_tomb_of_the_giants_fade_c05.jpg   # the same banner a second earlier, read "Tomb oll" / "Gants": nothing, not "Tomb Oll Gants"
+  t: 2075.5
+  expected: []
+- file: boss_bar_nito_dark_arena_c05.jpg   # the darkest arena in the game; the bar's black lines still stand out
+  t: 3132
+  expected:
+    - {type: boss_engaged, text: Gravelord Nito}
+- file: boss_bar_pinwheel_c05.jpg
+  t: 1987
+  expected:
+    - {type: boss_engaged, text: Pinwheel}
+- file: boss_bar_bed_of_chaos_c05.jpg
+  t: 875
+  expected:
+    - {type: boss_engaged, text: Bed of Chaos}
+- file: area_painted_world_c05.jpg   # read "Painted World ofAriamis"
+  t: 3558
+  expected:
+    - {type: area_discovered, text: Painted World of Ariamis}
+- file: area_lost_izalith_c05.jpg
+  t: 533
+  expected:
+    - {type: area_discovered, text: Lost Izalith}
+- file: area_the_catacombs_c05.jpg
+  t: 1198
+  expected:
+    - {type: area_discovered, text: The Catacombs}
+# Chunk 06 (`t` within recordings/dsr/er_06.webm).
+- file: boss_bar_priscilla_c06.jpg   # white fog behind the bar; the top line blends on some frames (0.81 dark at t 966)
+  t: 975
+  expected:
+    - {type: boss_engaged, text: Crossbreed Priscilla}
+- file: boss_bar_gwyn_c06.jpg   # the comma is part of the name
+  t: 1848
+  expected:
+    - {type: boss_engaged, text: "Gwyn, Lord of Cinder"}
+- file: area_kiln_c06.jpg
+  t: 1631.5
+  expected:
+    - {type: area_discovered, text: Kiln of the First Flame}
+- file: neg_credits_cast_c06.jpg   # end credits: Title Case names on black in every strip
+  t: 2209.5
+  expected: []
+- file: neg_credits_column_c06.jpg
+  t: 2127.5
+  expected: []

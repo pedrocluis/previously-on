@@ -1,0 +1,171 @@
+# Frames from a real 2-hour 1440p recording, labelled from a full-frame OCR survey.
+- file: death_01.jpg
+  t: 661
+  expected:
+    - {type: death}
+- file: death_02.jpg
+  t: 804
+  expected:
+    - {type: death}
+- file: death_03.jpg
+  t: 744
+  expected:
+    - {type: death}
+- file: grace_01.jpg
+  t: 500
+  expected:
+    - {type: checkpoint_discovered}
+- file: area_specimen_storehouse.jpg
+  t: 598
+  expected:
+    - {type: area_discovered, text: "Specimen Storehouse"}
+- file: area_specimen_storehouse_2.jpg
+  t: 640
+  expected:
+    - {type: area_discovered, text: "Specimen Storehouse"}
+- file: boss_messmer.jpg
+  t: 5400
+  expected:
+    - {type: boss_engaged, text: "Base Serpent Messmer"}
+- file: item_finger_remedy.jpg
+  t: 132
+  expected:
+    - {type: item_acquired, text: "Furlcalling Finger Remedy"}
+- file: item_lump_of_flesh.jpg
+  t: 334
+  expected:
+    - {type: item_acquired, text: "Lump of Flesh"}
+- file: item_beast_horn.jpg
+  t: 342
+  expected:
+    - {type: item_acquired, text: "Beast Horn"}
+- file: item_scadutree_fragment.jpg
+  t: 458
+  expected:
+    - {type: item_acquired, text: "Scadutree Fragment"}
+    - {type: dialogue}   # a carved message being read at the same time
+- file: item_pickled_liver.jpg
+  t: 1114
+  expected:
+    - {type: item_acquired, text: "Holyproof Pickled Liver"}
+- file: item_smithing_stone.jpg
+  t: 1646
+  expected:
+    - {type: item_acquired, text: "Smithing Stone [6]"}
+- file: dialogue_01.jpg
+  t: 624
+  expected:
+    - {type: dialogue}
+- file: dialogue_02.jpg
+  t: 1326
+  expected:
+    - {type: dialogue}
+- file: dialogue_03.jpg
+  t: 1334
+  expected:
+    - {type: dialogue}
+- file: dialogue_04.jpg
+  t: 1368
+  expected:
+    - {type: dialogue}
+- file: dialogue_05.jpg
+  t: 1392
+  expected:
+    - {type: dialogue}
+- file: neg_gameplay_01.jpg
+  t: 120
+  expected: []
+- file: neg_gameplay_02.jpg
+  t: 900
+  expected: []
+- file: item_stacked_smithing_stones.jpg
+  t: 1800
+  expected:
+    - {type: item_acquired, text: "Smithing Stone [7]"}   # two stacked pickups
+- file: neg_gameplay_04.jpg
+  t: 2700
+  expected: []
+- file: neg_menu_equipment.jpg
+  t: 926
+  expected: []
+- file: neg_menu_status.jpg
+  t: 928
+  expected: []
+- file: neg_map.jpg
+  t: 32
+  expected: []
+- file: item_dueling_shield_over_menu.jpg
+  t: 208
+  expected:
+    - {type: item_acquired, text: "Dueling Shield"}   # pickup popup still showing while the menu is open
+- file: neg_tutorial_popup.jpg
+  t: 592
+  expected: []
+- file: neg_button_prompt.jpg
+  t: 1318
+  expected: []
+- file: neg_grace_prompt.jpg
+  t: 560
+  expected: []
+- file: neg_pickup_prompt.jpg
+  t: 452
+  expected: []
+- file: boss_defeated_demigod.jpg
+  t: 6128
+  expected:
+    - {type: boss_defeated, text: "DEMIGOD FELLED"}   # the Messmer kill, with the drops stacking up
+    - {type: item_acquired, text: "Remembrance of the Impaler"}
+    - {type: item_acquired, text: "Messmer's Kindling"}
+- file: boss_messmer_impaler.jpg
+  t: 3488
+  expected:
+    - {type: boss_engaged, text: "Messmer the Impaler"}
+- file: neg_outro_names.jpg
+  t: 7121
+  expected: []   # stream outro name roll in the boss-bar strip, no HP bar
+# Frames from the MKIceAndFire base-game playthrough (YouTube bg8i4CvE74M, 1080p60).
+# t is the absolute video time in seconds.
+- file: area_chapel_glued.jpg
+  t: 365
+  expected:
+    - {type: area_discovered, text: "Chapel of Anticipation"}   # OCR reads "Chapel ofAnticipation"
+- file: negative_map_found.jpg
+  t: 1749.5
+  expected:   # "MAP FOUND" banner after reading a map fragment is not an area; the pickup is the event
+    - {type: item_acquired, text: "Map: Limgrave, West"}
+- file: negative_invader_vanquished.jpg
+  t: 6424.5
+  expected:   # "BLOODY FINGER VANQUISHED" after the NPC invader Nerijus (read LOODYFINGERVANQUISHEI live) is not an area
+    - {type: item_acquired, text: "Reduvia"}   # his drop is still in the item box
+- file: boss_defeated_godrick_popup.jpg
+  t: 11363.5
+  expected:   # "DEMIGOD FELLED" was hidden behind the Great Runes tutorial popup 8 s earlier; the drop proves the kill
+    - {type: item_acquired, text: "Godrick's Great Rune"}
+    - {type: item_acquired, text: "Remembrance of the Grafted"}
+    - {type: boss_defeated, text: "Godrick's Great Rune"}   # rune + remembrance together = the kill
+- file: negative_host_vanquished.jpg
+  t: 20415.5
+  expected:   # "HOST VANQUISHED" after a Volcano Manor invasion (read HOST VANOUISHED live) is not an area
+    - {type: item_acquired, text: "Rune Arc"}
+    - {type: item_acquired, text: "Furlcalling Finger Remedy"}
+- file: item_with_boss_hp_number.jpg
+  t: 22274.5
+  expected:   # Putrid Avatar's HP number "451" sits in the item box next to the pickup
+    - {type: item_acquired, text: "Faded Erdleaf Flower"}
+- file: boss_mohg_omen_raised_bar.jpg
+  t: 42690
+  expected:   # a second bar above the boss bar pushes the whole block up 0.051; the fight went unlogged before
+    - {type: boss_engaged, text: "Mohg, the Omen"}
+- file: negative_bloody_finger_vanquished_2.jpg
+  t: 41684.5
+  expected:   # read SLOODYFINGERVANOUISHEI live: two letters off, scores 80 against VANQUISHED
+    - {type: item_acquired, text: "Rivers of Blood"}   # the invader's drops
+    - {type: item_acquired, text: "Okina Mask"}
+- file: boss_nights_cavalry_glaive.jpg
+  t: 46690
+  expected:   # bracketed suffix failed the Title Case check; the whole double fight went unlogged
+    - {type: boss_engaged, text: "Night's Cavalry (Glaive)"}
+- file: area_elphael_five_words.jpg
+  t: 49307
+  expected:   # five words; the banner rule capped names at four
+    - {type: area_discovered, text: "Elphael, Brace of the Haligtree"}
