@@ -7,18 +7,24 @@
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<header class="top">
-  <nav>
-    <a href="#home" data-page="home">Previously on…</a>
-    <a href="#sessions" data-page="sessions">Sessions</a>
-    <a href="#timeline" data-page="timeline">Timeline</a>
-    <a href="#search" data-page="search">Search</a>
-    <a href="#settings" data-page="settings">Settings</a>
-  </nav>
-  <select id="game" class="game" title="Which game's sessions to show"></select>
-  <div id="watch" class="watch"></div>
-</header>
-<main id="main"><p class="muted">Loading…</p></main>
+<div class="shell">
+  <aside class="rail">
+    <a class="mark" href="#home">Previously on<span>…</span></a>
+    <nav>
+      <a href="#home" data-page="home">Recap</a>
+      <a href="#sessions" data-page="sessions">Sessions</a>
+      <a href="#timeline" data-page="timeline">Timeline</a>
+      <a href="#search" data-page="search">Search</a>
+      <a href="#settings" data-page="settings">Settings</a>
+    </nav>
+    <label class="game-pick">
+      <span class="label">Showing</span>
+      <select id="game" title="Which game's sessions to show"></select>
+    </label>
+    <div id="watch" class="watch"></div>
+  </aside>
+  <main id="main"><p class="loading">Loading…</p></main>
+</div>
 <script src="app.js"></script>
 </body>
 </html>
