@@ -13,6 +13,7 @@ from __future__ import annotations
 import platform
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
 
 from . import __version__
@@ -125,6 +126,22 @@ def _webview_platform() -> str:
     return "winforms + webview2" if sys.platform == "win32" else "gtk"
 
 
+def _download_mark() -> str:
+    """Explorer marks every file unzipped from a browser download; .NET
+    Framework refuses to load a marked DLL unless the exe's .config allows
+    it (packaging/exe.config). Reported so an issue shows which case it is."""
+    runtime = Path(sys.executable).parent / "_internal" / "pythonnet" / "runtime" / "Python.Runtime.dll"
+    try:
+        with open(f"{runtime}:Zone.Identifier", encoding="utf-8", errors="replace") as fh:
+            zone = next((line.strip() for line in fh if line.startswith("ZoneId")), "ZoneId=?")
+    except OSError:
+        return "not marked"
+    config = Path(sys.executable).with_name(Path(sys.executable).name + ".config")
+    if not config.is_file():
+        raise RuntimeError(f"files are marked as downloaded ({zone}) and {config.name} is missing")
+    return f"marked as downloaded ({zone}); allowed by {config.name}"
+
+
 def _run(name: str, fn: Callable[[], str], required: bool = True) -> Check:
     try:
         return Check(name, True, fn(), required)
@@ -141,6 +158,8 @@ def run_checks() -> list[Check]:
     ]
     if sys.platform == "win32":
         checks.append(_run("webview2 runtime", _webview2_version))
+        if getattr(sys, "frozen", False):
+            checks.append(_run("download mark", _download_mark))
         checks.append(_run("dxcam", _dxcam_module))
         # No output to duplicate (a VM, a remote session) is not fatal: the
         # app falls back to GDI, which sees borderless and windowed games.
