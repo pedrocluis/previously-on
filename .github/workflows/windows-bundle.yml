@@ -62,7 +62,11 @@ jobs:
       - name: Window starts and stays up
         working-directory: ${{ runner.temp }}
         run: |
-          $p = Start-Process "$env:GITHUB_WORKSPACE/dist/PreviouslyOn/PreviouslyOn.exe" -PassThru
+          # Not Start-Process: the shell shows the "downloaded, unsigned
+          # program" prompt for a marked exe, and nobody clicks Run here.
+          $info = [System.Diagnostics.ProcessStartInfo]::new("$env:GITHUB_WORKSPACE/dist/PreviouslyOn/PreviouslyOn.exe")
+          $info.UseShellExecute = $false
+          $p = [System.Diagnostics.Process]::Start($info)
           Start-Sleep -Seconds 30
           $log = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter app.log -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -like '*previously-on*' } | Select-Object -First 1
