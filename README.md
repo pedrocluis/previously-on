@@ -21,7 +21,29 @@ profiles were built and validated on recordings.
 Live capture is Windows only (the games are). Everything else — replaying a
 recording, the recap, search and the desktop window — also runs on Linux.
 
-## Setup
+## Install (Windows)
+
+Download `PreviouslyOn-<version>-windows-x64.zip` from the
+[releases](https://github.com/pedrocluis/previously-on/releases), unzip it
+anywhere and run `PreviouslyOn.exe`. Nothing to install beside it: Python,
+the OCR models and the capture backend are in the folder. The window uses
+the Microsoft Edge WebView2 Runtime, which Windows 11 and current Windows 10
+already have.
+
+If something does not work, run `previously-on.exe check` from a terminal in
+that folder and paste its output into an issue; it tests OCR, capture and
+the window on your machine, and prints the data folder where the sessions
+and the window's own `app.log` live.
+
+The bundle is built by `.github/workflows/windows-bundle.yml` from
+`packaging/previously-on.spec`:
+
+```sh
+uv sync --group bundle
+uv run pyinstaller --noconfirm packaging/previously-on.spec   # -> dist/PreviouslyOn/
+```
+
+## Setup (from source)
 
 Requires [uv](https://docs.astral.sh/uv/). Python 3.12 is pinned.
 

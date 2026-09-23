@@ -21,3 +21,6 @@ eldenwatch-mvp.md
 # fixture frames are cut from other people's recordings; labels.yaml and READMEs stay
 tests/fixtures/*/*.jpg
 tests/fixtures/*/*.png
+# PyInstaller output (packaging/previously-on.spec)
+/build/
+/dist/
