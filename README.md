@@ -30,7 +30,7 @@ the OCR models and the capture backend are in the folder. The window uses
 the Microsoft Edge WebView2 Runtime, which Windows 11 and current Windows 10
 already have.
 
-If something does not work, run `previously-on.exe check` from a terminal in
+If something does not work, run `previously-on-cli.exe check` from a terminal in
 that folder and paste its output into an issue; it tests OCR, capture and
 the window on your machine, and prints the data folder where the sessions
 and the window's own `app.log` live.

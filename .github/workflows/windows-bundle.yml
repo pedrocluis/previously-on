@@ -32,7 +32,7 @@ jobs:
       - name: Self-check (OCR models, window platform, WebView2, dxcam)
         working-directory: ${{ runner.temp }}
         run: |
-          & "$env:GITHUB_WORKSPACE/dist/PreviouslyOn/previously-on.exe" check
+          & "$env:GITHUB_WORKSPACE/dist/PreviouslyOn/previously-on-cli.exe" check
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Window starts and stays up
@@ -49,21 +49,19 @@ jobs:
           }
           Stop-Process -Id $p.Id -Force
 
-      - name: Zip
+      - name: Name
         id: zip
         run: |
           $version = uv run --no-sync python -c "import previously_on; print(previously_on.__version__)"
-          $name = "PreviouslyOn-$version-windows-x64.zip"
-          Compress-Archive -Path dist/PreviouslyOn -DestinationPath $name
-          "name=$name" >> $env:GITHUB_OUTPUT
-          "{0:N0} MB unpacked, {1:N0} MB zipped" -f `
-            ((Get-ChildItem dist/PreviouslyOn -Recurse | Measure-Object Length -Sum).Sum / 1MB), `
-            ((Get-Item $name).Length / 1MB)
+          "name=PreviouslyOn-$version-windows-x64" >> $env:GITHUB_OUTPUT
+          "{0:N0} MB unpacked" -f ((Get-ChildItem dist/PreviouslyOn -Recurse | Measure-Object Length -Sum).Sum / 1MB)
 
+      # The artifact is the folder itself: GitHub zips it for download, so
+      # uploading a zip would hand out a zip inside a zip.
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.zip.outputs.name }}
-          path: ${{ steps.zip.outputs.name }}
+          path: dist/
           if-no-files-found: error
 
       - name: Attach to release
@@ -71,6 +69,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $zip = "${{ steps.zip.outputs.name }}.zip"
+          Compress-Archive -Path dist/PreviouslyOn -DestinationPath $zip
           gh release view $env:GITHUB_REF_NAME 2>$null
           if ($LASTEXITCODE -ne 0) { gh release create $env:GITHUB_REF_NAME --draft --title $env:GITHUB_REF_NAME --notes "" }
-          gh release upload $env:GITHUB_REF_NAME "${{ steps.zip.outputs.name }}" --clobber
+          gh release upload $env:GITHUB_REF_NAME $zip --clobber

@@ -2,10 +2,10 @@
 #
 #   uv sync --group bundle
 #   uv run pyinstaller --noconfirm packaging/previously-on.spec
-#   dist/PreviouslyOn/previously-on.exe check
+#   dist/PreviouslyOn/previously-on-cli.exe check
 #
 # One folder, two executables sharing it: PreviouslyOn.exe (the window, no
-# console — what a player starts) and previously-on.exe (the command line,
+# console — what a player starts) and previously-on-cli.exe (the command line,
 # for `check` and `snapshot`). One-folder, not one-file: a one-file build
 # unpacks ~150 MB of OCR runtime to %TEMP% on every start, and antivirus
 # scanners flag self-extracting executables far more often.
@@ -68,7 +68,7 @@ cli_exe = EXE(
     pyz,
     bootstrap + [cli_script],
     exclude_binaries=True,
-    name="previously-on",
+    name="previously-on-cli",
     console=True,
     upx=False,
 )
