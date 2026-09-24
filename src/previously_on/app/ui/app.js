@@ -87,6 +87,13 @@ async function poll() {
   // A capture ending (recap written or skipped) adds a session to the picker's count.
   const finished = prev && prev.state === 'summarizing' && s.state !== 'summarizing';
   if (finished) renderGames();
+  const welcome = document.getElementById('fr-status');
+  if (page === 'home' && welcome) {
+    // The first capture turns the welcome screen into the resume screen.
+    if (s.state === 'capturing') renderHome();
+    else welcome.innerHTML = firstRunStatus(s);
+    return;
+  }
   if (page === 'home') {
     // ...and changes the resume screen.
     const backfilled = prev && prev.summarize.state === 'running' && s.summarize.state !== 'running';
@@ -121,9 +128,43 @@ function recapBody(text) {
   return String(text || '').trim().replace(/^Last played[^\n]*\n\s*\n/, '');
 }
 
+// Nothing logged for any game yet: which games, what the window is doing,
+// what leaves the machine, where the key goes, how it stays out of the way.
+function firstRunStatus(s) {
+  if (!s || !s.running) return 'Not watching yet. Press <strong>Watch for games</strong> below the menu, then start one of these:';
+  if (s.state === 'waiting') return 'Watching. Start one of these and this window picks it up on its own:';
+  return esc(stateLabel(s)[1]);
+}
+
+function renderFirstRun(f) {
+  const key = f.has_key
+    ? '<strong>A key is set.</strong> Each session gets a written recap when it ends.'
+    : '<strong>For written recaps, paste an OpenAI key in <a href="#settings">Settings</a>.</strong> Without one, the one-line recap, stats, the timeline and search still work.';
+  const auto = f.autostart.supported
+    ? `<label class="check"><input type="checkbox" id="fr-autostart" ${f.autostart.enabled ? 'checked' : ''}>Start when I sign in, in the ${f.tray ? 'tray' : 'background'}</label>` : '';
+  const stay = f.tray ? 'Closing this window keeps it watching from the tray.' : 'Leave this window open while you play.';
+  main.innerHTML = `<p class="eyebrow">Welcome</p>
+    <h1><span class="pre">Previously on</span>your playthrough…</h1>
+    <hr class="rule">
+    <p class="fr-status" id="fr-status">${firstRunStatus(lastStatus)}</p>
+    <ul class="supported">${f.games.map(g => `<li>${esc(g)}</li>`).join('')}</ul>
+    <div class="first"><ol>
+      <li><span><strong>Frames never leave this machine.</strong> The screen is read here and thrown away. Areas, bosses, deaths, pickups and dialogue are logged as plain text on this PC.</span></li>
+      <li><span>${key} Only the text log is sent, once per session, to the model you pick. Never a frame.</span></li>
+      <li><span><strong>Leave it running.</strong> ${stay}${auto}</span></li>
+    </ol></div>
+    <div id="feed"></div>`;
+  const box = document.getElementById('fr-autostart');
+  if (box) box.onchange = async () => {
+    const r = await call('save_settings', {start_at_login: box.checked});
+    if (r.error) { alert(r.error); box.checked = !box.checked; }
+  };
+}
+
 async function renderHome() {
   const h = await call('home');
   if (h.error) { main.innerHTML = errorBox(h); return; }
+  if (h.first_run) { renderFirstRun(h.first_run); return; }
   if (h.empty) {
     main.innerHTML = `<p class="eyebrow">Nothing logged yet</p>
       <h1><span class="pre">Previously on</span>${gameTitle(h.game, '…')}</h1>
@@ -335,11 +376,13 @@ async function renderSettings(saved) {
       </div>
     </div>
     <div class="set">
-      <div class="about"><h3>Capture</h3><p class="hint">Which screen the game is on, and whether to start watching on launch.</p></div>
+      <div class="about"><h3>Capture</h3><p class="hint">Which screen the game is on, and when to watch.</p></div>
       <div>
         <div class="field"><label for="monitor">Monitor (1 is the primary)</label>
           <input type="number" id="monitor" min="1" value="${s.monitor}"></div>
         <label class="check"><input type="checkbox" id="watch_on_start" ${s.watch_on_start ? 'checked' : ''}>Watch for a game when the app opens</label>
+        ${s.start_at_login.supported ? `<label class="check"><input type="checkbox" id="start_at_login" ${s.start_at_login.enabled ? 'checked' : ''}>Start when I sign in, with the window hidden${s.tray ? ' in the tray' : ''}</label>` : ''}
+        <p class="hint" style="margin-top:12px">${s.tray ? 'Closing the window keeps capture running from the tray icon; quit from its menu.' : 'Closing the window stops capture.'}</p>
       </div>
     </div>
     <div class="set">
@@ -365,6 +408,7 @@ async function renderSettings(saved) {
       monitor: parseInt(v('monitor').value, 10),
       watch_on_start: v('watch_on_start').checked,
     };
+    if (v('start_at_login')) changes.start_at_login = v('start_at_login').checked;
     const r = await call('save_settings', changes);
     if (r.error) { document.getElementById('saved').innerHTML = `<span class="error">${esc(r.error)}</span>`; return; }
     await renderSettings(r);

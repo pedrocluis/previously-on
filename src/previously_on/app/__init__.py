@@ -3,11 +3,15 @@ capture loop running in the same process, so a tester starts one thing.
 
 ``previously-on app`` from the CLI, or ``previously-on-app`` — the console-less
 entry point for Windows, where stderr goes to ``<data dir>/app.log``.
+With a tray icon, closing the window hides it and capture goes on; a start
+at sign-in (``--background``) opens straight into the tray. One copy watches
+at a time: a second start shows the first one's window instead.
 """
 
 from __future__ import annotations
 
 import sys
+import threading
 from importlib.resources import files
 from pathlib import Path
 
@@ -15,7 +19,9 @@ from ..capture import open_source
 from ..games import get_profile, list_profiles
 from ..session import default_data_dir
 from .api import Api
+from .autostart import BACKGROUND_FLAG, Autostart
 from .config import AppConfig, default_config_path
+from .instance import InstanceServer, signal_running
 from .watcher import Watcher
 
 WINDOW_TITLE = "Previously On"
@@ -47,6 +53,18 @@ def _log_to_file(data_dir: Path | None) -> None:
     )
 
 
+def _session_ending() -> bool:
+    """Windows is signing out or shutting down. pywebview's closing event
+    does not carry the close reason, and a window that cancels this close
+    ("hide to the tray") holds up the shutdown."""
+    if sys.platform != "win32":
+        return False
+    import ctypes
+
+    SM_SHUTTINGDOWN = 0x2000
+    return bool(ctypes.windll.user32.GetSystemMetrics(SM_SHUTTINGDOWN))
+
+
 def run_app(
     game: str | None = None,
     data_dir: Path | None = None,
@@ -60,23 +78,36 @@ def run_app(
     monitor: int | None = None,
     debug: bool = False,
     config_path: Path | None = None,
+    background: bool = False,
+    tray: bool = True,
 ) -> int:
     # Before importing webview: on Windows without a console its import
     # swaps a missing stderr for os.devnull, and the log would never open.
     if sys.stderr is None:
         _log_to_file(data_dir)
-    import webview
 
     # Live capture watches every game unless one is named; a replay has no
     # process to tell the game by, so it needs one (Elden Ring by default).
     profiles = list_profiles()
     config_path = config_path or default_config_path()
+    live = source in ("screen", "dxcam", "mss")
+
+    # Only a live watcher must be alone: two would log the same session twice.
+    single = watch and live
+    if single and signal_running(config_path.parent):
+        print("already running: showed its window instead", file=sys.stderr)
+        return 0
+
+    import webview
+
     config = AppConfig.load(config_path)
     config.apply_env()
+    autostart = Autostart()
+    if getattr(sys, "frozen", False) and autostart.refresh():
+        print("start at sign-in now points at this copy", file=sys.stderr)
 
     watcher: Watcher | None = None
     if watch:
-        live = source in ("screen", "dxcam", "mss")
         mon = monitor or config.monitor
         if live:
             watcher = Watcher([get_profile(game)] if game else profiles, data_dir, monitor=mon)
@@ -94,12 +125,47 @@ def run_app(
         if config.watch_on_start or not live:
             watcher.start()
 
-    api = Api(profiles, data_dir, watcher, config, config_path, game=game)
+    api = Api(profiles, data_dir, watcher, config, config_path, game=game, autostart=autostart)
+    window = None
+    quitting = threading.Event()
+
+    def show() -> None:
+        if window is not None:
+            window.show()
+            window.restore()
+
+    def quit_app() -> None:
+        quitting.set()
+        if window is not None:
+            window.destroy()
+
+    icon = None
+    if tray:
+        from .tray import start_tray
+
+        icon = start_tray(watcher, show, quit_app)
+    api.tray = icon is not None
     window = webview.create_window(
-        WINDOW_TITLE, url=str(ui_path()), js_api=api, width=1040, height=760, min_size=(720, 480)
+        WINDOW_TITLE,
+        url=str(ui_path()),
+        js_api=api,
+        width=1040,
+        height=760,
+        min_size=(720, 480),
+        # Hidden only when the tray can bring it back.
+        hidden=background and icon is not None,
     )
+    server = InstanceServer(config_path.parent, show) if single else None
 
     def closing() -> bool:
+        if quitting.is_set() or _session_ending():
+            return True
+        if icon is not None:
+            # Keep watching from the tray. Hide off the GUI thread: this
+            # handler runs on it and hide() waits for it on some backends.
+            threading.Thread(target=window.hide, daemon=True).start()
+            icon.hint_hidden()
+            return False
         if watcher is not None and watcher.status().get("state") == "capturing" and watcher.profile:
             return bool(
                 window.create_confirmation_dialog(
@@ -109,7 +175,13 @@ def run_app(
         return True
 
     window.events.closing += closing
-    webview.start(debug=debug, http_server=True)
+    try:
+        webview.start(debug=debug, http_server=True)
+    finally:
+        if server is not None:
+            server.close()
+        if icon is not None:
+            icon.stop()
 
     if watcher is not None:
         watcher.stop()
@@ -120,8 +192,9 @@ def run_app(
 
 
 def main() -> int:
-    """``previously-on-app`` / ``PreviouslyOn.exe``: the GUI entry point, no
-    arguments. Always logs to ``app.log`` — whether stderr is missing
-    depends on how the process was started, not on whether anyone sees it."""
+    """``previously-on-app`` / ``PreviouslyOn.exe``: the GUI entry point. Its
+    one argument is ``--background``, the sign-in start (tray only). Always
+    logs to ``app.log`` — whether stderr is missing depends on how the
+    process was started, not on whether anyone sees it."""
     _log_to_file(None)
-    return run_app()
+    return run_app(background=BACKGROUND_FLAG in sys.argv[1:])

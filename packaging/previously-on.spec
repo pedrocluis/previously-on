@@ -40,6 +40,8 @@ if sys.platform == "win32":
     # WinForms/WebView2 platform is picked by pywebview at runtime.
     hiddenimports += collect_submodules("dxcam")
     hiddenimports += ["webview.platforms.winforms", "webview.platforms.edgechromium", "clr"]
+    # pystray imports its platform backend by name at runtime.
+    hiddenimports += ["pystray._win32"]
 
 a = Analysis(
     [ROOT + "/packaging/app_entry.py", ROOT + "/packaging/cli_entry.py"],
