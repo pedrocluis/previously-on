@@ -17,7 +17,7 @@ jobs:
   pytest:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # pygobject (pywebview's GTK layer on Linux) builds from source against
       # girepository-2.0 and cairo; the synthetic frames want a serif font.
@@ -27,7 +27,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libgirepository-2.0-dev libcairo2-dev pkg-config fonts-dejavu-core
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
