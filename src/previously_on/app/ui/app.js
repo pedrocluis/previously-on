@@ -292,7 +292,9 @@ async function renderSession(stamp) {
     ${conv ? `<h2>Conversations</h2><ul class="ledger talk">${conv}</ul>` : ''}
     <h2>Every event</h2>
     <div class="filters" id="type-filter">${types.map(t => `<label><input type="checkbox" value="${esc(t)}" checked><span>${esc(typeLabel(t))}</span></label>`).join('')}</div>
-    <table><thead><tr><th>#</th><th>At</th><th>Kind</th><th>What the screen said</th></tr></thead><tbody id="events"></tbody></table>`;
+    <table><thead><tr><th>#</th><th>At</th><th>Kind</th><th>What the screen said</th></tr></thead><tbody id="events"></tbody></table>
+    <div class="notice"><p>Something here the screen never showed, or something it showed that is missing? Export this session and attach it to an issue: the event log and the recap, as text. No frame, no key.</p>
+      <div class="row"><button id="export">Export for a bug report…</button><span class="hint" id="export-note"></span></div></div>`;
   const draw = () => {
     const on = new Set([...document.querySelectorAll('#type-filter input:checked')].map(i => i.value));
     document.getElementById('events').innerHTML = s.event_list.filter(e => on.has(e.type)).map(e =>
@@ -300,6 +302,16 @@ async function renderSession(stamp) {
   };
   document.getElementById('type-filter').onchange = draw;
   draw();
+  document.getElementById('export').onclick = () => exportSession(stamp);
+}
+
+async function exportSession(stamp) {
+  const note = document.getElementById('export-note');
+  const r = await call('export_session', stamp);
+  if (r.error) { note.innerHTML = `<span class="error">${esc(r.error)}</span>`; return; }
+  if (!r.saved) return;
+  note.innerHTML = `Saved to ${esc(r.saved)}. <a href="#" id="export-issue">Open a new issue</a>, say which event is wrong (its # above) and what the screen showed, and attach the zip.`;
+  document.getElementById('export-issue').onclick = e => { e.preventDefault(); call('open_url', r.issue_url); };
 }
 
 // --- timeline -------------------------------------------------------------------

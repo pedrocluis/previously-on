@@ -19,6 +19,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from .. import card as card_mod
+from .. import export as export_mod
 from ..games import GameProfile
 from ..recap.store import sessions_dir, summarize_after_run
 from ..session import default_data_dir
@@ -39,7 +40,7 @@ class Api:
         *,
         game: str | None = None,
         autostart: Autostart | None = None,
-        save_dialog: Callable[[str], str | None] | None = None,
+        save_dialog: Callable[[str, str], str | None] | None = None,
     ) -> None:
         self._profiles = {p.id: p for p in ((profiles,) if isinstance(profiles, GameProfile) else profiles)}
         if not self._profiles:
@@ -56,8 +57,9 @@ class Api:
         self._summarizing: dict = {"state": "idle", "session": None, "message": ""}
         self._autostart = autostart
         self.tray = False  # set by run_app once the tray icon is up
-        # Asks where to save a file (suggested name → path, or None if
-        # cancelled). Without one (tests, no window) the card goes to the data dir.
+        # Asks where to save a file (suggested name, file-type filter such as
+        # "PNG image (*.png)" → path, or None if cancelled). Without one
+        # (tests, no window) files go to the data dir.
         self._save_dialog = save_dialog
 
     # --- which game --------------------------------------------------------
@@ -153,21 +155,46 @@ class Api:
             play = card_mod.gather(p.id, self._data_dir)
             if not play.sessions:
                 return {"error": "nothing logged yet: the card needs at least one session"}
-            name = card_mod.filename(p.id)
-            if self._save_dialog is not None:
-                chosen = self._save_dialog(name)
-                if not chosen:
-                    return {"cancelled": True}
-                path = Path(chosen)
-            else:
-                path = (self._data_dir or default_data_dir()) / "cards" / name
-                path.parent.mkdir(parents=True, exist_ok=True)
+            path = self._ask_save(card_mod.filename(p.id), "PNG image (*.png)", "cards")
+            if path is None:
+                return {"cancelled": True}
             if path.suffix.lower() != ".png":
                 path = path.with_name(path.name + ".png")
             path.write_bytes(card_mod.png(play, p.display_name))
             return {"saved": str(path)}
 
         return self._guard(save)
+
+    # --- export ------------------------------------------------------------------
+
+    def export_session(self, stamp: str) -> dict:
+        """Ask where to save one session's log + recap as a zip for an issue."""
+
+        def save():
+            game = self._profile().id
+            log = export_mod.find_session(game, stamp, self._data_dir)
+            path = self._ask_save(export_mod.filename(game, stamp), "Zip archive (*.zip)", "exports")
+            if path is None:
+                return {"cancelled": True}
+            return {"saved": str(export_mod.write(log, path)), "issue_url": export_mod.ISSUE_URL}
+
+        return self._guard(save)
+
+    def open_url(self, url: str) -> dict:
+        """Open a link in the player's browser (the window itself never navigates away)."""
+        if not url.startswith("https://github.com/pedrocluis/previously-on"):
+            return {"error": "only the project's own pages open from here"}
+        import webbrowser
+
+        return {"opened": webbrowser.open(url)}
+
+    def _ask_save(self, name: str, file_type: str, fallback_dir: str) -> Path | None:
+        if self._save_dialog is not None:
+            chosen = self._save_dialog(name, file_type)
+            return Path(chosen) if chosen else None
+        path = (self._data_dir or default_data_dir()) / fallback_dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
 
     # --- capture ---------------------------------------------------------------
 

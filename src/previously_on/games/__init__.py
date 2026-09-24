@@ -48,6 +48,11 @@ class GameProfile(Protocol):
         Usually zero or one; a stacked item-pickup list yields several.
         ``frame`` is the full BGR frame for pixel-level checks (e.g. "is the
         boss HP bar actually drawn under this name?"); it may be ``None``.
+        Read it only through module-level ``has_*(frame, ...)`` functions
+        returning a bool: the frame-free regression set (``tests/reads.py``)
+        records their answers per fixture and replays them without the frame.
+        Their other arguments must have a stable ``repr`` (a ``Region``, an
+        ``OcrLine``, a number).
         Bias toward precision: returning nothing is always safe; a wrong
         event erodes trust far more than a missed one.
         """

@@ -1,0 +1,48 @@
+name: Wrong or missing event
+description: The log or the recap has something the screen never showed, or missed something it did.
+labels: ["detector"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you — every one of these is a rule to fix. Export the session first:
+        on its page in the app, **Export for a bug report…** (or `previously-on export --game <id> <stamp>`),
+        and attach the zip below. It holds the event log and the recap as text; no frame, no key.
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options:
+        - Elden Ring
+        - "Dark Souls: Remastered"
+        - "Dark Souls II: Scholar of the First Sin"
+        - Dark Souls III
+        - "Sekiro: Shadows Die Twice"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is wrong
+      options:
+        - An event the screen never showed (invented)
+        - An event with the wrong text or type
+        - Something the screen showed that was not logged (missed)
+        - The recap says something the log does not
+    validations:
+      required: true
+  - type: textarea
+    id: which
+    attributes:
+      label: Which event, and what the screen actually showed
+      description: The event's # on the session page, or roughly when it happened in the session. A screenshot of the moment helps more than anything, if you have one.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: Resolution, display mode (fullscreen / borderless / windowed), HDR on or off, game language.
+  - type: markdown
+    attributes:
+      value: Drag the exported zip into the box above or below.
