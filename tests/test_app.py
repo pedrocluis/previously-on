@@ -426,7 +426,11 @@ def test_gui_entry_logs_to_app_log(tmp_path, monkeypatch):
     import previously_on.app as app
 
     monkeypatch.setattr(app, "default_data_dir", lambda: tmp_path)
-    monkeypatch.setattr(app, "run_app", lambda: print("hello from the window", file=sys.stderr) or 0)
+    started = {}
+    monkeypatch.setattr(
+        app, "run_app", lambda **kw: started.update(kw) or print("hello from the window", file=sys.stderr) or 0
+    )
+    monkeypatch.setattr(sys, "argv", ["PreviouslyOn.exe", "--background"])
     monkeypatch.setattr(sys, "stderr", sys.stderr)  # restored after the test
     monkeypatch.setattr(sys, "stdout", sys.stdout)
     assert app.main() == 0
@@ -434,3 +438,4 @@ def test_gui_entry_logs_to_app_log(tmp_path, monkeypatch):
     text = (tmp_path / "app.log").read_text(encoding="utf-8")
     assert text.startswith("--- ") and "previously-on" in text
     assert "hello from the window" in text
+    assert started == {"background": True}  # the sign-in start

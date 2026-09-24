@@ -306,6 +306,13 @@ input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; m
 
 /* --- empty home -------------------------------------------------------------------- */
 
+.fr-status { font-size: 16px; line-height: 1.5; color: var(--dim); margin: 0 0 14px; max-width: 62ch; }
+.fr-status strong { color: var(--text); font-weight: 650; }
+.supported { list-style: none; margin: 0 0 34px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 10px; max-width: 62ch; }
+.supported li { font-stretch: 112%; font-weight: 650; font-size: 13.5px; color: var(--text);
+  border: 1px solid var(--line); border-radius: 3px; padding: 6px 11px; }
+.first li .check { margin-top: 12px; }
+
 .first { max-width: 62ch; }
 .first ol { list-style: none; counter-reset: step; margin: 0; padding: 0; }
 .first li { counter-increment: step; display: grid; grid-template-columns: 40px minmax(0, 1fr); padding: 16px 0;

@@ -76,6 +76,20 @@ jobs:
           if ((Select-String -Path $log.FullName -Pattern 'Traceback' -Quiet)) {
             Write-Error "traceback in app.log"; exit 1
           }
+          if ((Select-String -Path $log.FullName -Pattern 'no tray icon' -Quiet)) {
+            Write-Error "the tray icon did not start"; exit 1
+          }
+          # A second start (a double-click while it sits in the tray) must
+          # hand over to the running copy and exit, not capture twice.
+          $second = [System.Diagnostics.Process]::Start($info)
+          if (-not $second.WaitForExit(30000)) {
+            Stop-Process -Id $second.Id -Force
+            Write-Error "a second PreviouslyOn.exe kept running beside the first"; exit 1
+          }
+          if (-not (Select-String -Path $log.FullName -Pattern 'already running' -Quiet)) {
+            Write-Error "the second start exited without reaching the first copy"; exit 1
+          }
+          if ($p.HasExited) { Write-Error "the first copy died when the second started"; exit 1 }
           Stop-Process -Id $p.Id -Force
 
       - name: Name

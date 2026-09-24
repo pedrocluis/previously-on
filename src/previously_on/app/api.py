@@ -21,6 +21,7 @@ from ..games import GameProfile
 from ..recap.store import sessions_dir, summarize_after_run
 from ..session import default_data_dir
 from . import views
+from .autostart import Autostart
 from .config import AppConfig, mask_key
 from .watcher import Watcher
 
@@ -35,6 +36,7 @@ class Api:
         config_path: Path | None = None,
         *,
         game: str | None = None,
+        autostart: Autostart | None = None,
     ) -> None:
         self._profiles = {p.id: p for p in ((profiles,) if isinstance(profiles, GameProfile) else profiles)}
         if not self._profiles:
@@ -49,6 +51,8 @@ class Api:
         self._config_path = config_path
         self._summarize_lock = threading.Lock()
         self._summarizing: dict = {"state": "idle", "session": None, "message": ""}
+        self._autostart = autostart
+        self.tray = False  # set by run_app once the tray icon is up
 
     # --- which game --------------------------------------------------------
 
@@ -81,6 +85,14 @@ class Api:
             p = self._profile()
             out = views.home(p.id, self._data_dir)
             out["game"] = p.display_name
+            if out["empty"] and not any(g["sessions"] for g in views.games(self._profiles.values(), self._data_dir)):
+                # Nothing logged for any game: the welcome screen.
+                out["first_run"] = {
+                    "games": [q.display_name for q in self._profiles.values()],
+                    "has_key": self._has_key(),
+                    "tray": self.tray,
+                    "autostart": self._autostart_state(),
+                }
             return out
 
         return self._guard(load)
@@ -157,6 +169,21 @@ class Api:
 
     # --- settings --------------------------------------------------------------
 
+    def _has_key(self) -> bool:
+        """A key for the model recaps will use."""
+        c = self._config
+        if _default_model().startswith("claude"):
+            return bool(c.anthropic_api_key.strip() or os.environ.get("ANTHROPIC_API_KEY"))
+        return bool(c.openai_api_key.strip() or os.environ.get("OPENAI_API_KEY"))
+
+    def _autostart_state(self) -> dict:
+        if self._autostart is None:
+            return {"supported": False, "enabled": False}
+        try:
+            return self._autostart.to_dict()
+        except OSError:
+            return {"supported": False, "enabled": False}
+
     def get_settings(self) -> dict:
         c = self._config
         return {
@@ -168,6 +195,8 @@ class Api:
             "default_model": _default_model(),
             "monitor": c.monitor,
             "watch_on_start": c.watch_on_start,
+            "start_at_login": self._autostart_state(),
+            "tray": self.tray,
             "data_dir": str(self._data_dir or default_data_dir()),
             "config_path": str(self._config_path) if self._config_path else None,
             "env_overrides": [v for v in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY") if os.environ.get(v)],
@@ -182,6 +211,13 @@ class Api:
                 data[key] = ""
             elif changes.get(key):
                 data[key] = str(changes[key]).strip()
+        if changes.get("start_at_login") is not None:
+            if self._autostart is None or not self._autostart.supported:
+                return {"error": "starting at sign-in is not available for this install"}
+            try:
+                self._autostart.set(bool(changes["start_at_login"]))
+            except OSError as exc:
+                return {"error": f"could not change the sign-in start: {exc}"}
         for key in ("model", "monitor", "watch_on_start"):
             if key in changes and changes[key] is not None:
                 data[key] = changes[key]

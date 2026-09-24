@@ -104,6 +104,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--data-dir", type=Path, help="data directory (default: platform user data dir)")
     ap.add_argument("--no-watch", action="store_true", help="only show what is logged; do not capture")
+    ap.add_argument("--background", action="store_true", help="start in the tray with the window hidden (the sign-in start)")
+    ap.add_argument("--no-tray", action="store_true", help="no tray icon: closing the window quits")
     ap.add_argument("--monitor", type=int, help="monitor to capture (default: from settings)")
     ap.add_argument(
         "--source",
@@ -374,6 +376,8 @@ def cmd_app(args: argparse.Namespace) -> int:
         duration=args.duration,
         monitor=args.monitor,
         debug=args.debug,
+        background=args.background,
+        tray=not args.no_tray,
     )
 
 

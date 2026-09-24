@@ -19,6 +19,8 @@ dependencies = [
     "openai>=2",
     "pywebview>=6",
     "pygobject>=3.50 ; sys_platform == 'linux'",
+    "pystray>=0.19.5",
+    "pillow>=10",  # the tray icon is drawn at runtime (RapidOCR needs it too)
 ]
 
 [project.scripts]

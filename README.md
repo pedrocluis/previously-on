@@ -66,6 +66,12 @@ whole playthrough, and a search over every item, place, boss and NPC are
 one click away. On Windows `previously-on-app` opens it without a
 console.
 
+It sits in the tray: closing the window keeps it watching, and Quit is in
+the tray icon's menu. Settings has "Start when I sign in", which starts it
+hidden in the tray (`--background`). Only one copy watches at a time.
+Starting it again brings up the window of the one already running.
+`--no-tray` makes closing the window quit.
+
 Recaps need an API key, entered in Settings or set in the environment:
 `OPENAI_API_KEY` for the default model (`gpt-5.4-mini`), or
 `ANTHROPIC_API_KEY` with `PREVIOUSLY_ON_MODEL=claude-…`. Recaps cost cents

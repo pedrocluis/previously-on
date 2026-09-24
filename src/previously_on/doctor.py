@@ -126,6 +126,17 @@ def _webview_platform() -> str:
     return "winforms + webview2" if sys.platform == "win32" else "gtk"
 
 
+def _tray() -> str:
+    """The tray icon's backend and the icon it draws. A bundle that lost
+    pystray still opens, but closing the window then stops capture."""
+    import pystray
+
+    from .app.tray import icon_image
+
+    icon_image("capturing")
+    return pystray.Icon.__module__.rsplit(".", 1)[-1].lstrip("_")
+
+
 def _download_mark() -> str:
     """Explorer marks every file unzipped from a browser download; .NET
     Framework refuses to load a marked DLL unless the exe's .config allows
@@ -155,6 +166,8 @@ def run_checks() -> list[Check]:
         _run("game profiles", _profiles),
         _run("ocr", _ocr),
         _run("window", _webview_platform),
+        # Required where the bundle ships: no tray there is a packaging bug.
+        _run("tray", _tray, required=sys.platform == "win32"),
     ]
     if sys.platform == "win32":
         checks.append(_run("webview2 runtime", _webview2_version))
