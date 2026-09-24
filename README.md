@@ -81,6 +81,12 @@ Detection, stats and search are fully offline.
 `--no-watch` only browses what is logged; `--source video --path X.webm`
 drives the window from a recording.
 
+**Something wrong in a session?** On its page, *Export for a bug report…*
+saves that session's event log and recap as a zip — text only, no frame,
+no key — to attach to a
+[new issue](https://github.com/pedrocluis/previously-on/issues/new?template=wrong-event.yml).
+There is no telemetry; a wrong event only gets fixed if someone reports it.
+
 ## Command line
 
 ```sh
@@ -106,6 +112,9 @@ uv run previously-on run --source images --path ./frames
 
 # Summarise a session: "3h 12m · 14 deaths · Bayle still standing"
 uv run previously-on stats ~/.local/share/previously-on/sessions/eldenring/*.jsonl
+
+# Zip one session's log + recap for an issue (the latest one when no stamp is given).
+uv run previously-on export --game ds3 20260922-101500
 
 # Tune region coordinates / inspect what OCR sees on one screenshot.
 uv run previously-on calibrate screenshot.png
@@ -152,30 +161,26 @@ occasionally fall between OCR shots (~1 in 30).
 ## Tests
 
 ```sh
-uv run pytest                               # everything (~2 min; loads OCR models)
-uv run pytest tests/test_regression.py -s   # real screenshots, with a per-category report
+uv run pytest                                      # everything, on any clone
+uv run pytest tests/test_regression_reads.py -s    # the regression set, per game and category
 ```
 
 Every rule in a profile was measured on real frames, labelled in
 `tests/fixtures/<game>/labels.yaml` with the source video and timestamp.
 The frames themselves are cut from other people's recordings and are **not
-in this repository**; the tests that need one skip without it, and the
-rest (classification on recorded OCR reads, synthetic frames, dedupe,
-stats, recap, app) run everywhere.
+in this repository**; what OCR read from each one, and the answers of the
+pixel checks, are (`reads.json`), so the whole regression set — about 380
+frames over five games — runs anywhere, in CI included. The few tests that
+need an actual JPEG skip without it.
 
-## Adding a game
+## Contributing and adding a game
 
-1. Create `src/previously_on/games/<id>.py` with a class implementing
-   `GameProfile` (`games/__init__.py`): `id`, `display_name`,
-   `process_names`, `aspect_ratio`, `regions`, `cooldowns`,
-   `quiet_after_event`, and `classify(region, ocr_lines, frame)`.
-2. Register it in `_profiles()` in `games/__init__.py`.
-3. Add `tests/fixtures/<id>/labels.yaml` and screenshots.
-4. `previously-on run --game <id>`.
-
-Never write a region or a banner phrase from memory: measure it on a
-frame. Every classifier rule should reject by default — an invented event
-is worse than a missed one.
+See [CONTRIBUTING.md](CONTRIBUTING.md): how the frame-free regression set
+works, the rules every classifier follows, and a step-by-step guide to
+adding a game — survey a recording for where the text is
+(`tools/add_game/survey.py`), scaffold a profile (`tools/add_game/scaffold.py`),
+measure its regions, label 30+ frames, and tighten the rules until nothing
+is invented.
 
 ## Disclaimer
 

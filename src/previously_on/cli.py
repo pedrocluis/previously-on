@@ -102,6 +102,12 @@ def build_parser() -> argparse.ArgumentParser:
     cd.add_argument("--data-dir", type=Path)
     cd.add_argument("--out", type=Path, help="where to write it (default: previously-on-<game>-<date>.png here)")
 
+    ex = sub.add_parser("export", help="zip one session's event log and recap to attach to a GitHub issue (text only)")
+    _add_game_arg(ex)
+    ex.add_argument("session", nargs="?", help="session stamp (YYYYMMDD-HHMMSS) or a .jsonl path (default: the latest)")
+    ex.add_argument("--data-dir", type=Path)
+    ex.add_argument("--out", type=Path, help="where to write it (default: previously-on-<game>-<stamp>.zip here)")
+
     ap = sub.add_parser("app", help="open the desktop window (resume screen, sessions, timeline) and watch for any game")
     ap.add_argument(
         "--game",
@@ -380,6 +386,33 @@ def cmd_card(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    from . import export
+    from .recap.store import session_id, sessions_dir
+    from .session import read_session
+
+    if args.session and args.session.endswith(".jsonl"):
+        log = Path(args.session)
+        if not log.is_file():
+            print(f"no such file: {log}", file=sys.stderr)
+            return 1
+    else:
+        logs = sorted(sessions_dir(args.game, args.data_dir).glob("*.jsonl"))
+        stamp = args.session or (logs[-1].stem if logs else None)
+        if stamp is None:
+            print(f"no sessions logged for {args.game}", file=sys.stderr)
+            return 1
+        try:
+            log = export.find_session(args.game, stamp, args.data_dir)
+        except FileNotFoundError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+    game = read_session(log)[0].game
+    out = export.write(log, args.out or Path(export.filename(game, session_id(log))))
+    print(f"{out}\nattach it to a new issue: {export.ISSUE_URL}")
+    return 0
+
+
 def cmd_app(args: argparse.Namespace) -> int:
     from .app import run_app
 
@@ -425,6 +458,7 @@ def main(argv: list[str] | None = None) -> int:
         "recap": cmd_recap,
         "search": cmd_search,
         "card": cmd_card,
+        "export": cmd_export,
         "app": cmd_app,
         "games": cmd_games,
         "check": cmd_check,

@@ -125,11 +125,9 @@ def run_app(
         if config.watch_on_start or not live:
             watcher.start()
 
-    def save_dialog(filename: str) -> str | None:
+    def save_dialog(filename: str, file_type: str) -> str | None:
         # ``window`` exists by the time the page can ask.
-        chosen = window.create_file_dialog(
-            webview.FileDialog.SAVE, save_filename=filename, file_types=("PNG image (*.png)",)
-        )
+        chosen = window.create_file_dialog(webview.FileDialog.SAVE, save_filename=filename, file_types=(file_type,))
         if isinstance(chosen, (list, tuple)):  # some backends return a sequence
             chosen = chosen[0] if chosen else None
         return chosen or None

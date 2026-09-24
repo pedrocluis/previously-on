@@ -510,7 +510,45 @@ def test_api_card_and_save(tmp_path, eldenring):
     # A window: its dialog picks the path; a missing extension is added, a cancel writes nothing.
     asked = []
     target = tmp_path / "mine"
-    api = Api(eldenring, tmp_path, None, AppConfig(), save_dialog=lambda name: asked.append(name) or str(target))
+    api = Api(eldenring, tmp_path, None, AppConfig(), save_dialog=lambda name, kind: asked.append(name) or str(target))
     assert api.save_card() == {"saved": str(target) + ".png"} and asked == [r["filename"]]
-    api = Api(eldenring, tmp_path, None, AppConfig(), save_dialog=lambda name: None)
+    api = Api(eldenring, tmp_path, None, AppConfig(), save_dialog=lambda name, kind: None)
     assert api.save_card() == {"cancelled": True}
+
+
+def test_export_session(tmp_path, eldenring):
+    import zipfile
+
+    from previously_on.cli import main
+
+    a, b = playthrough(tmp_path, eldenring)
+    api = Api(eldenring, tmp_path, None, AppConfig())
+    assert "error" in api.export_session("20000101-000000")
+    # No window: the zip lands in the data dir, with the log, its recap and a README.
+    r = api.export_session(a.stem)
+    saved = Path(r["saved"])
+    assert saved.parent == tmp_path / "exports" and "issues/new" in r["issue_url"]
+    with zipfile.ZipFile(saved) as z:
+        assert sorted(z.namelist()) == sorted(["README.txt", a.name, recap_path(a).name])
+        assert z.read(a.name) == a.read_bytes()
+        readme = z.read("README.txt").decode()
+        assert "game:      eldenring" in readme and "events:    10" in readme and str(tmp_path) not in readme
+    # A session without a recap exports just the log; the dialog's path gets .zip.
+    target = tmp_path / "bug"
+    api = Api(eldenring, tmp_path, None, AppConfig(), save_dialog=lambda name, kind: str(target) if kind.startswith("Zip") else None)
+    assert api.export_session(b.stem) == {"saved": str(target) + ".zip", "issue_url": r["issue_url"]}
+    with zipfile.ZipFile(str(target) + ".zip") as z:
+        assert sorted(z.namelist()) == sorted(["README.txt", b.name])
+    api = Api(eldenring, tmp_path, None, AppConfig(), save_dialog=lambda name, kind: None)
+    assert api.export_session(a.stem) == {"cancelled": True}
+    # The CLI: the latest session by default.
+    out = tmp_path / "cli.zip"
+    assert main(["export", "--data-dir", str(tmp_path), "--out", str(out)]) == 0
+    with zipfile.ZipFile(out) as z:
+        assert b.name in z.namelist()
+    assert main(["export", "--data-dir", str(tmp_path), "nope"]) == 1
+
+
+def test_open_url_only_opens_the_project(tmp_path, eldenring):
+    api = Api(eldenring, tmp_path, None, AppConfig())
+    assert "error" in api.open_url("https://example.com/")

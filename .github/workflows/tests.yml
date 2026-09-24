@@ -1,0 +1,39 @@
+name: Tests
+
+# The whole suite on a clean checkout: no fixture frames (they are not in the
+# repository), so the regression set runs from the recorded reads
+# (tests/reads.py) and the tests that need a JPEG skip.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # pygobject (pywebview's GTK layer on Linux) builds from source against
+      # girepository-2.0 and cairo; the synthetic frames want a serif font.
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgirepository-2.0-dev libcairo2-dev pkg-config fonts-dejavu-core
+
+      - uses: astral-sh/setup-uv@v10.2.0  # no floating major tags since v8
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked
+
+      # addopts has -ra: the summary lists every skip and why.
+      - name: Test
+        run: uv run pytest -q

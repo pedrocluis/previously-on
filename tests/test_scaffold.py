@@ -16,10 +16,9 @@ from previously_on.games import GameProfile
 from previously_on.ocr import OcrLine
 
 ROOT = Path(__file__).resolve().parents[1]
-SCAFFOLD = ROOT / ".claude/skills/add-game/scripts/scaffold.py"
+SCAFFOLD = ROOT / "tools/add_game/scaffold.py"
 BLACK = np.zeros((1080, 1920, 3), dtype=np.uint8)
 
-pytestmark = pytest.mark.skipif(not SCAFFOLD.exists(), reason="the add-game scaffold is not in this checkout")
 
 
 def run_scaffold(root: Path, *extra: str) -> subprocess.CompletedProcess:
