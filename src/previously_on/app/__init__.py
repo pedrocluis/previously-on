@@ -27,14 +27,24 @@ def ui_path() -> Path:
 
 
 def _log_to_file(data_dir: Path | None) -> None:
-    """Under pythonw there is no console; keep the detector's lines somewhere
-    a tester can send."""
+    """The window has no console; keep the detector's lines somewhere a
+    player can find and attach to an issue."""
+    import platform
+    from datetime import datetime
+
+    from .. import __version__
+
     directory = data_dir or default_data_dir()
     directory.mkdir(parents=True, exist_ok=True)
     fh = (directory / "app.log").open("a", encoding="utf-8", buffering=1)
     sys.stderr = fh
     if sys.stdout is None:
         sys.stdout = fh
+    frozen = " (bundle)" if getattr(sys, "frozen", False) else ""
+    print(
+        f"--- {datetime.now():%Y-%m-%d %H:%M:%S} previously-on {__version__}{frozen} · {platform.platform()}",
+        file=fh,
+    )
 
 
 def run_app(
@@ -110,5 +120,8 @@ def run_app(
 
 
 def main() -> int:
-    """``previously-on-app``: the GUI entry point, no arguments."""
+    """``previously-on-app`` / ``PreviouslyOn.exe``: the GUI entry point, no
+    arguments. Always logs to ``app.log`` — whether stderr is missing
+    depends on how the process was started, not on whether anyone sees it."""
+    _log_to_file(None)
     return run_app()
