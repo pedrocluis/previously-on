@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 from rapidfuzz import fuzz
 
-from ..classify import is_all_caps, join_rows, match_vocab, normalize, respace, word_count
+from ..classify import is_all_caps, is_name_row, join_rows, match_vocab, normalize, respace, word_count
 from ..events import EventType
 from ..ocr import OcrLine
 from ..regions import Region, crop
@@ -139,6 +139,24 @@ _ESTUS_LABEL = re.compile(r"^\W*(?:(?i:Estus)\s*(?:F(?:l(?:a(?:sk?)?)?)?)?|Flask
 # "X :OK O :Close" (the menu hint row at y 0.86, x 0.13-0.22, shares the
 # subtitle strip).
 _BUTTON_PROMPT = re.compile(r"(?:^|\s)[A-Z]\s?[:：]|[:：]\s?[A-Z]")
+# The end credits (juggernaut4's `c8DyAJgWCxY`, recordings/ds3/credits/)
+# scroll through the subtitle strip. At 2 fps the detector happened to log
+# none of it, but read every half second 36 lines pass as speech: staff rows
+# with the company in brackets ("Maaya Kawamura (Teco Co.,Lid.)",
+# "(Tricrest,inc)"), the publisher's offices ("BANDAI NAMCO
+# EntertainmentEuropeSA.S."), and the licence block ("Uses Bink
+# Video.Copyright © 1997-2016 by RAD Game Tools, Inc.", "…trademarks of
+# Autodesk, Inc."). The title screen's line ("Dark Souls™ Ⅲ & ©2016 BANDAI
+# NAMCO Entertainment Inc.") is the same thing, and chunk 00 had logged it
+# as dialogue at t 1. Brackets, a company suffix ("Co." however the rest is
+# misread), a copyright word or sign, "rights reserved", "trademark", a year
+# range, a web address or the publisher's name: none of the 899 dialogue
+# lines of the ten chunks has one (not "lad" or "lid", which are words).
+# A staff row without a company is a row of names (`classify.is_name_row`).
+_CREDITS_TOKEN = re.compile(
+    r"[()@©®]|(?i:\b(?:inc|ltd|llc|corp|copyright)\b|\bwww\.|\.com\b|rights\s*reserved|trademark|bandai\s*namco)"
+    r"|\b(?:Co|CO)\b[.,]|[A-Z]{12,}|\b(?:19|20)\d\d\s*-\s*(?:19|20)\d\d"
+)
 
 _COUNT_SUFFIX = re.compile(r"\s*[xX×]\s*\d+\s*$")
 _HAS_DIGIT = re.compile(r"\d")
@@ -322,7 +340,7 @@ class Ds3Profile:
         # they end in punctuation. Labels and button hints don't.
         if text[-1] not in _SENTENCE_END:
             return None
-        if _BUTTON_PROMPT.search(text) or match_vocab(text, BANNER_VOCAB) is not None:
+        if _BUTTON_PROMPT.search(text) or _CREDITS_TOKEN.search(text) or is_name_row(text) or match_vocab(text, BANNER_VOCAB) is not None:
             return None
         return EventType.DIALOGUE, text, conf
 

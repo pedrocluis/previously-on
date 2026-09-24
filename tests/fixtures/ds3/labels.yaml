@@ -288,3 +288,28 @@
   t: 34419
   expected:
     - {type: item_acquired, text: Soul of the Lords}
+# The end credits and the NG+ start, from juggernaut4's "DS3 credits roll."
+# (c8DyAJgWCxY, recordings/ds3/credits/); `t` is the second in it. The five
+# credits frames were logged as dialogue before the credits guard.
+- file: neg_credits_staff_1.jpg
+  t: 117.5           # "Maaya Kawamura (Teco Co.,Lid.)"
+  expected: []
+- file: neg_credits_staff_2.jpg
+  t: 142.5           # "… (IMAGICADIGITALSCAPE Co.Lad)"
+  expected: []
+- file: neg_credits_staff_3.jpg
+  t: 189.5           # "Testers Kenji Akiba Ryo Aoki (DIGITAL Hearts Co.,Ltd.)"
+  expected: []
+- file: neg_credits_licence_1.jpg
+  t: 462.5           # the Autodesk Beast licence line
+  expected: []
+- file: neg_credits_licence_2.jpg
+  t: 475.5           # "Dark Souls™ Ⅲ & ©2016 BANDAI NAMCO Entertainment Inc. / …"
+  expected: []
+- file: neg_ng_plus_prompt.jpg
+  t: 492.0           # "Begin journey 2 in current state?" YES / NO
+  expected: []
+- file: area_firelink_ng_plus.jpg
+  t: 507.5           # NG+ restarts at Firelink Shrine, banner and all: a real event
+  expected:
+    - {type: area_discovered, text: Firelink Shrine}

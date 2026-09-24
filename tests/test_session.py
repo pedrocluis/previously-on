@@ -28,3 +28,18 @@ def test_partial_log_without_end_is_readable(tmp_path):
     meta, events = read_session(log.path)  # simulate a crash: no session_end yet
     assert meta.ended is None and len(events) == 1
     log.close()
+
+
+def test_revise_replaces_the_text_and_keeps_the_time(tmp_path):
+    started = datetime(2026, 9, 15, 20, 0, 0)
+    with SessionLog.open("eldenring", "images", data_dir=tmp_path, started=started) as log:
+        area = Event(ts=started, t_rel=4.0, type=EventType.AREA_DISCOVERED, text="NChapelof Anticlpauon", conf=0.9, region="r")
+        log.append(area)
+        log.append(Event(ts=started, t_rel=5.0, type=EventType.DIALOGUE, text="Hello there.", conf=0.9, region="s"))
+        area.text, area.conf, area.raw = "Chapel of Anticipation", 0.98, ["Chapel of Anticipation"]
+        log.revise(area)
+        path = log.path
+    _, events = read_session(path)
+    assert [e.index for e in events] == [0, 1]
+    assert (events[0].text, events[0].t_rel, events[0].conf) == ("Chapel of Anticipation", 4.0, 0.98)
+    assert events[1].text == "Hello there."

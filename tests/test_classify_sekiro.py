@@ -372,3 +372,37 @@ def test_snapping_cannot_turn_one_area_into_another(profile):
 
     for a, b in itertools.combinations(KNOWN_AREAS, 2):
         assert fuzz.ratio(normalize(a), normalize(b)) < KNOWN_AREA_MATCH, (a, b)
+
+
+@pytest.mark.parametrize(
+    "read",
+    [
+        # The end credits (oPMgx7-dTwU), sampled every half second: staff
+        # columns OCR'd as one centred row...
+        "Financiol Analyst Brian Short Retail Manager Steve Maclennan Executive Assistant Sylvia Lopez.",
+        "Senior Analyst Daniel Pak Specialist Alana Sherer Associate Speclalist Sian Clarke Mean Garrel!",
+        "Seigo Oyama Additional Debug DIGITAL Hearts Co..Lid.",
+        "Harmonics International Co..Lrd.",
+        # ...and the licence lines at the end.
+        "Uses Autodesk& Scaleform@.0 Copyright 2019 Autodesk,Inc.",
+        "1999-2019 Havok softwareis02019Microsoft.Alrightsreserved.",
+        "Thissofrware uses fontsproducedby FONTWORKS Inc.",
+    ],
+)
+def test_end_credits_are_not_speech(profile, read):
+    line = [OcrLine(read, 0.95, x0=0.10, y0=0.2, x1=0.90, y1=0.6)]
+    assert profile.classify(SUBTITLE, line, BLACK) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # The most capitalised real lines of the eight hours stay speech.
+        "The Senpou Temple on Mount Kongo...",
+        "(Cough, cough...) The one of whom I speak hides in an abandoned temple up ahead..",
+        "Impressive, Shinobi of the Divine Heir.",
+    ],
+)
+def test_capitalised_and_bracketed_subtitles_are_still_speech(profile, text):
+    hits = profile.classify(SUBTITLE, [OcrLine(text, 0.97, x0=0.10, y0=0.2, x1=0.90, y1=0.6)], BLACK)
+    assert hits and hits[0][0] is EventType.DIALOGUE

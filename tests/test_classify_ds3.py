@@ -277,11 +277,35 @@ def test_subtitle_rejects_prompts_and_labels(profile):
 def test_subtitle_is_a_sentence(profile):
     line = L("And they'd have us seek the Lords of Cinder, and return them to their moulding thrones.", 0.99, x0=0.03, x1=0.96, y0=0.12, y1=0.58)
     assert profile.classify(SUBTITLE, line, BLACK)[0][0] is EventType.DIALOGUE
-    # The splash's copyright line (t 0) is a sentence too, but a splash
-    # frame reads as garbage in every other region and the banner takes
-    # precedence in the log; the credits token guard is Remastered's, and
-    # this game's credits are not surveyed yet.
     assert profile.classify(SUBTITLE, L("to equip", 0.96), BLACK) == []
+
+
+@pytest.mark.parametrize(
+    "read",
+    [
+        # The splash's copyright line, logged as dialogue at chunk 00 t 1.
+        "Dark SoulsTM Ⅲl & O2016 BANDAI NAMCO Entertainment Inc./ 2011-2016FromSoftware,Inc.",
+        # The end credits (c8DyAJgWCxY) read every half second: staff rows
+        # with the company in brackets, a row of names, the publisher's
+        # offices, the licence block.
+        "Maaya Kawamura (Teco Co.,Lid.) Cha Dongwoon (Teco Co.,Lid.)",
+        "Ryuichi Nakajima (Tricrest,inc) Daisuke Higuchi (Tricrest,ine)",
+        "Additional Debug Pole To Win Co., Lid.",
+        "Jianhui Wang Qingmei Zhao Vana Hh.",
+        "BANDAI NAMCO EntertainmentEuropeSA.S.",
+        "cSilicon Studio Corp., all rights reserved.",
+        "Uses Bink Video.Copyright O 1997-2016 by RAD Game Tools, Inc.",
+        "FONTWORKS,and font names are trademarks or registered trademarksofFontworks Inc.",
+    ],
+)
+def test_credits_and_licence_lines_are_not_speech(profile, read):
+    assert profile.classify(SUBTITLE, L(read, 0.93), BLACK) == []
+
+
+def test_lad_and_lid_are_words_not_company_suffixes(profile):
+    for text in ("You haven't given up yet? Then you're a brasher lad than I thought.",
+                 "A lid covering an overgrown privy; a prop to keep thee from the dark soul of thine desire."):
+        assert profile.classify(SUBTITLE, L(text, 0.97), BLACK)[0][0] is EventType.DIALOGUE
 
 
 def test_boss_name_needs_the_bar(profile):

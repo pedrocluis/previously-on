@@ -32,11 +32,14 @@ Rules — these matter more than fluency:
    you carry an entry forward from the previous state, keep its old references
    and add new ones only from this session — at most 5 references per entry, the
    most telling ones. A claim without an event to point at is dropped.
-3. Speakers. Subtitles carry no speaker name. Name a speaker only when the lines
-   themselves say it ("I am Miriel") or the previous state already knows this
-   person at this place; that is basis "named". If you can only infer it from
-   where the player was and what was said, basis "inferred". Otherwise "unknown"
-   and speaker null. Unknown is a fine answer.
+3. Speakers. Subtitles carry no speaker name. Basis "named" only when this
+   session's lines say the name ("I am Miriel", "Well met, Varre"). Recognising
+   someone the previous state knows, from the place or the subject, is basis
+   "inferred", as is any other guess from where the player was and what was
+   said. Otherwise "unknown" and speaker null. Unknown is a fine answer. In the
+   prose, an inferred speaker is always hedged, every time: "probably Gideon told
+   you…", "someone, likely Melina, said…", never "Gideon told you…". What earlier
+   sessions established (the state's own notes) may be told plainly.
 4. Hedge like the reader would. The screen reader misses things and occasionally
    misreads a word; write "you reached", "you were told", not "you completed".
    Never invent an outcome for a fight the log does not close.

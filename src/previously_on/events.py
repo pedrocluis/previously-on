@@ -46,6 +46,9 @@ class Event:
     region: str
     raw: list[str] = field(default_factory=list)  # OCR lines this was built from
     frame_index: int = 0
+    # Position in the session log (what a recap cites as #n); set when the
+    # event is logged or read back, never serialised.
+    index: int = field(default=-1, compare=False)
 
     def to_json(self) -> str:
         return json.dumps(

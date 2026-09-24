@@ -85,3 +85,52 @@ def test_scripted_session(tmp_path, eldenring, ocr):
     s = compute(events)
     assert [(b.name, b.attempts, b.defeated) for b in s.bosses] == [("Margit, the Fell Omen", 3, True)]
     assert summary_line(s).endswith("2 deaths · Margit, the Fell Omen felled in 3 tries")
+
+
+def test_a_better_read_revises_the_logged_event(tmp_path, monkeypatch):
+    """The first read of a banner is logged at once; a clearly better read of
+    it inside the cooldown becomes a ``revise`` line, and the log reads back
+    with the better text at the first read's time."""
+    import numpy as np
+
+    from previously_on import pipeline
+    from previously_on.diff import WatchResult
+    from previously_on.ocr import OcrLine
+    from previously_on.regions import Region
+
+    region = Region("banner", 0.0, 0.0, 1.0, 1.0)
+    reads = iter([("NChapelof Anticlpauon", 0.90), ("Chapel of Anticipation", 0.98), ("Chapel of Anticipation", 0.97)])
+
+    class Profile:
+        id = "stub"
+        regions = [region]
+        cooldowns = {EventType.AREA_DISCOVERED: 30.0}
+
+        def classify(self, region, lines, frame):
+            text, conf = next(reads)
+            return [(EventType.AREA_DISCOVERED, text, conf)]
+
+    class Ocr:
+        def read(self, crop):
+            return [OcrLine("line", 0.9)]
+
+    class Source:
+        name = "stub"
+
+        def frames(self):
+            for i in range(3):
+                yield Frame(index=i, ts=datetime(2026, 9, 16), t_rel=4.0 + i, image=np.zeros((8, 8, 3), np.uint8))
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(pipeline.RegionWatcher, "update", lambda self, crop: WatchResult(True, True, True, 1.0))
+    monkeypatch.setattr(pipeline, "has_text_like_content", lambda crop: True)
+    revised = []
+    log = SessionLog.open("stub", "stub", data_dir=tmp_path)
+    stats = Detector(Source(), Profile(), Ocr(), log, on_event=lambda e: None, on_revise=revised.append).run()
+
+    assert (stats.events, stats.suppressed, stats.revised) == (1, 2, 1)
+    assert [e.text for e in revised] == ["Chapel of Anticipation"]
+    _, events = read_session(log.path)
+    assert [(e.t_rel, e.text, e.conf) for e in events] == [(4.0, "Chapel of Anticipation", 0.98)]
