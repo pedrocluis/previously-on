@@ -1,8 +1,10 @@
 name: Windows bundle
 
 # Builds the PyInstaller folder (packaging/previously-on.spec), proves it
-# runs on a machine that never had the source checked out into a venv, and
-# zips it. A tag v* also attaches the zip to a GitHub release.
+# runs on a machine that never had the source checked out into a venv, wraps
+# it in an installer (packaging/installer.iss) and tests install, upgrade
+# over a running copy and uninstall. A tag v* also attaches the installer
+# and the zip to a GitHub release.
 
 on:
   push:
@@ -99,12 +101,76 @@ jobs:
           "name=PreviouslyOn-$version-windows-x64" >> $env:GITHUB_OUTPUT
           "{0:N0} MB unpacked" -f ((Get-ChildItem dist/PreviouslyOn -Recurse | Measure-Object Length -Sum).Sum / 1MB)
 
+      - name: Build the installer
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y; if ($LASTEXITCODE -ne 0) { exit 1 } }
+          $version = uv run --no-sync python -c "import previously_on; print(previously_on.__version__)"
+          & $iscc /Q "/DAppVersion=$version" "/O$env:RUNNER_TEMP\setup" packaging/installer.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-ChildItem "$env:RUNNER_TEMP\setup" | ForEach-Object { "{0} {1:N0} MB" -f $_.Name, ($_.Length / 1MB) }
+
+      # A folder with a space, as under a user name that has one: the Run
+      # value and the --quit path must survive the quoting.
+      - name: Install, upgrade over a running copy, uninstall
+        working-directory: ${{ runner.temp }}
+        run: |
+          $setup = (Get-ChildItem "$env:RUNNER_TEMP\setup" -Filter *-setup.exe).FullName
+          $dir = "$env:RUNNER_TEMP\Installed Copy"
+          $exe = "$dir\PreviouslyOn.exe"
+          $run = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+          $log = "$env:LOCALAPPDATA\previously-on\previously-on\app.log"
+          function Setup([string]$what) {
+            $p = Start-Process $setup -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS=startup `"/DIR=$dir`" `"/LOG=$env:RUNNER_TEMP\$what.log`"" -Wait -PassThru
+            if ($p.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\$what.log"; Write-Error "$what exited with $($p.ExitCode)"; exit 1 }
+          }
+          function Launch {
+            $info = [System.Diagnostics.ProcessStartInfo]::new($exe)
+            $info.UseShellExecute = $false
+            $p = [System.Diagnostics.Process]::Start($info)
+            Start-Sleep -Seconds 20
+            if ($p.HasExited) { Write-Error "the installed PreviouslyOn.exe exited with $($p.ExitCode)"; exit 1 }
+            $p
+          }
+
+          Setup install
+          if (-not (Test-Path $exe)) { Write-Error "nothing installed at $dir"; exit 1 }
+          $value = (Get-ItemProperty $run).PreviouslyOn
+          if ($value -ne "`"$exe`" --background") { Write-Error "Run value is '$value'"; exit 1 }
+          & "$dir\previously-on-cli.exe" check
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+          $p = Launch
+          Setup upgrade
+          # Exit code 0 is a clean quit; the installer's fallback kill is not.
+          if (-not $p.HasExited) { Write-Error "the upgrade left the old copy running"; exit 1 }
+          if ($p.ExitCode -ne 0 -or -not (Select-String -Path $log -Pattern 'asked to quit by another copy' -Quiet)) {
+            Get-Content $log -Tail 30; Write-Error "the upgrade killed the running copy (exit $($p.ExitCode)) instead of asking it to quit"; exit 1
+          }
+
+          $p = Launch
+          $u = Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait -PassThru
+          # The uninstaller hands over to a copy of itself in %TEMP%.
+          for ($i = 0; $i -lt 60 -and (Test-Path $exe); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path $exe) { Write-Error "uninstall left $exe behind"; exit 1 }
+          if (-not $p.HasExited) { Write-Error "uninstall left the app running"; exit 1 }
+          if ($p.ExitCode -ne 0) { Write-Error "uninstall killed the app (exit $($p.ExitCode)) instead of asking it to quit"; exit 1 }
+          if ((Get-ItemProperty $run).PreviouslyOn) { Write-Error "uninstall left the Run value"; exit 1 }
+          if (-not (Test-Path $log)) { Write-Error "a silent uninstall deleted the player's data"; exit 1 }
+          Get-Content $log -Tail 15
+
       # The artifact is the folder itself: GitHub zips it for download, so
       # uploading a zip would hand out a zip inside a zip.
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.zip.outputs.name }}
           path: dist/
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.zip.outputs.name }}-setup
+          path: ${{ runner.temp }}/setup/
           if-no-files-found: error
 
       - name: Attach to release
@@ -116,4 +182,5 @@ jobs:
           Compress-Archive -Path dist/PreviouslyOn -DestinationPath $zip
           gh release view $env:GITHUB_REF_NAME 2>$null
           if ($LASTEXITCODE -ne 0) { gh release create $env:GITHUB_REF_NAME --draft --title $env:GITHUB_REF_NAME --notes "" }
-          gh release upload $env:GITHUB_REF_NAME $zip --clobber
+          $setup = (Get-ChildItem "$env:RUNNER_TEMP\setup" -Filter *-setup.exe).FullName
+          gh release upload $env:GITHUB_REF_NAME $setup $zip --clobber

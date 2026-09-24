@@ -6,43 +6,86 @@ and a later one, instead of starting, asks it to show its window and exits.
 
 The first copy greets every connection with ``GREETING`` so a stale port
 file that now belongs to some other program is not mistaken for it.
+
+The installer uses the same channel to close a running copy before it
+replaces or removes its files (``PreviouslyOn.exe --quit``): the copy
+answers with its process id, quits as the tray's Quit does (the session log
+gets its end, a recap in flight its grace), and the caller waits for that
+process to be gone — its DLLs stay locked until then.
 """
 
 from __future__ import annotations
 
+import os
 import socket
 import sys
 import threading
 from pathlib import Path
 from typing import Callable
 
+import psutil
+
 GREETING = b"previously-on\n"
 SHOW = b"show\n"
+QUIT = b"quit\n"
 PORT_FILE = "instance.port"
 TIMEOUT = 1.0
 
 
-def signal_running(directory: Path) -> bool:
-    """Ask a running copy to show its window. True if one answered."""
+def _send(directory: Path, command: bytes) -> bytes | None:
+    """Send one command to a running copy; its reply (possibly empty), or
+    None when no copy of this program answered."""
     try:
         port = int((directory / PORT_FILE).read_text(encoding="ascii").strip())
     except (OSError, ValueError):
-        return False
+        return None
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=TIMEOUT) as conn:
             if conn.recv(len(GREETING)) != GREETING:
-                return False
-            conn.sendall(SHOW)
+                return None
+            conn.sendall(command)
+            reply = b""
+            while chunk := conn.recv(64):
+                reply += chunk
     except OSError:
+        return None
+    return reply
+
+
+def signal_running(directory: Path) -> bool:
+    """Ask a running copy to show its window. True if one answered."""
+    return _send(directory, SHOW) is not None
+
+
+def signal_quit(directory: Path, timeout: float) -> bool:
+    """Ask a running copy to quit and wait until its process has exited.
+    True when none is running any more (or none was); False when it is still
+    up after ``timeout`` seconds."""
+    reply = _send(directory, QUIT)
+    if reply is None:
+        return True
+    try:
+        proc = psutil.Process(int(reply.strip()))
+    except (ValueError, psutil.NoSuchProcess):
+        return True
+    try:
+        proc.wait(timeout)
+    except psutil.TimeoutExpired:
         return False
+    except psutil.NoSuchProcess:
+        pass
     return True
 
 
 class InstanceServer:
-    """Accepts ``show`` requests from later copies and calls ``on_show``."""
+    """Accepts ``show`` and ``quit`` requests from later copies and calls
+    ``on_show`` or ``on_quit``."""
 
-    def __init__(self, directory: Path, on_show: Callable[[], None]) -> None:
+    def __init__(
+        self, directory: Path, on_show: Callable[[], None], on_quit: Callable[[], None] | None = None
+    ) -> None:
         self.on_show = on_show
+        self.on_quit = on_quit
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind(("127.0.0.1", 0))
         self._sock.listen(4)
@@ -63,14 +106,20 @@ class InstanceServer:
                 try:
                     conn.settimeout(TIMEOUT)
                     conn.sendall(GREETING)
-                    if conn.recv(len(SHOW)) != SHOW:
+                    command = conn.recv(max(len(SHOW), len(QUIT)))
+                    if command == QUIT and self.on_quit is not None:
+                        conn.sendall(f"{os.getpid()}\n".encode("ascii"))
+                        action = self.on_quit
+                    elif command == SHOW:
+                        action = self.on_show
+                    else:
                         continue
                 except OSError:
                     continue
             try:
-                self.on_show()
+                action()
             except Exception as exc:  # noqa: BLE001 - keep serving
-                print(f"could not show the window: {type(exc).__name__}: {exc}", file=sys.stderr)
+                print(f"could not {command.decode().strip()}: {type(exc).__name__}: {exc}", file=sys.stderr)
 
     def close(self) -> None:
         self._closed.set()

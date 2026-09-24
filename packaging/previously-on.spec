@@ -10,6 +10,9 @@
 # unpacks ~150 MB of OCR runtime to %TEMP% on every start, and antivirus
 # scanners flag self-extracting executables far more often.
 #
+# packaging/installer.iss wraps the folder in a per-user setup.exe;
+# packaging/icon.ico is the tray's rewind mark (tray.icon_image at 256 px).
+#
 # PyInstaller only bundles what an import statement reaches. What it cannot
 # see is listed here; `previously-on check` on the built folder is the test
 # that nothing was left behind (CI runs it on every build).
@@ -65,6 +68,7 @@ app_exe = EXE(
     name="PreviouslyOn",
     console=False,
     upx=False,
+    icon=ROOT + "/packaging/icon.ico",
 )
 cli_exe = EXE(
     pyz,
@@ -73,6 +77,7 @@ cli_exe = EXE(
     name="previously-on-cli",
     console=True,
     upx=False,
+    icon=ROOT + "/packaging/icon.ico",
 )
 coll = COLLECT(
     app_exe,

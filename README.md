@@ -23,24 +23,35 @@ recording, the recap, search and the desktop window — also runs on Linux.
 
 ## Install (Windows)
 
-Download `PreviouslyOn-<version>-windows-x64.zip` from the
-[releases](https://github.com/pedrocluis/previously-on/releases), unzip it
-anywhere and run `PreviouslyOn.exe`. Nothing to install beside it: Python,
-the OCR models and the capture backend are in the folder. The window uses
-the Microsoft Edge WebView2 Runtime, which Windows 11 and current Windows 10
-already have.
+Download `PreviouslyOn-<version>-windows-x64-setup.exe` from the
+[releases](https://github.com/pedrocluis/previously-on/releases) and run it.
+It installs for your user only (no administrator prompt) into
+`%LOCALAPPDATA%\Programs\PreviouslyOn`, adds a Start menu entry and, unless
+you untick it, starts in the tray when you sign in. Python, the OCR models
+and the capture backend are all inside; the window uses the Microsoft Edge
+WebView2 Runtime, which Windows 11 and current Windows 10 already have.
+The installer is not code-signed yet, so SmartScreen will warn: *More info →
+Run anyway*.
+
+A newer installer upgrades in place, closing a running copy first (its
+session is ended properly). Uninstalling from *Settings → Apps* keeps your
+sessions and settings unless you tell it otherwise; they live in
+`%LOCALAPPDATA%\previously-on`. The same build is also on the release page
+as a zip, to unpack and run `PreviouslyOn.exe` without installing.
 
 If something does not work, run `previously-on-cli.exe check` from a terminal in
-that folder and paste its output into an issue; it tests OCR, capture and
+the install folder and paste its output into an issue; it tests OCR, capture and
 the window on your machine, and prints the data folder where the sessions
 and the window's own `app.log` live.
 
-The bundle is built by `.github/workflows/windows-bundle.yml` from
-`packaging/previously-on.spec`:
+The bundle and the installer are built by
+`.github/workflows/windows-bundle.yml` from `packaging/previously-on.spec`
+and `packaging/installer.iss` ([Inno Setup](https://jrsoftware.org/isinfo.php) 6):
 
 ```sh
 uv sync --group bundle
 uv run pyinstaller --noconfirm packaging/previously-on.spec   # -> dist/PreviouslyOn/
+iscc /DAppVersion=0.1.0 packaging/installer.iss                # -> dist/PreviouslyOn-0.1.0-windows-x64-setup.exe
 ```
 
 ## Setup (from source)

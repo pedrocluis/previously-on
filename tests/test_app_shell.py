@@ -8,7 +8,7 @@ import threading
 from previously_on.app.api import Api
 from previously_on.app.autostart import BACKGROUND_FLAG, Autostart, _DesktopFile, _Registry
 from previously_on.app.config import AppConfig
-from previously_on.app.instance import InstanceServer, signal_running
+from previously_on.app.instance import InstanceServer, signal_quit, signal_running
 from previously_on.app.tray import icon_image, status_line
 from previously_on.games import list_profiles
 
@@ -105,6 +105,56 @@ def test_a_second_copy_shows_the_first_ones_window(tmp_path):
         server.close()
     assert not (tmp_path / "instance.port").exists()
     assert not signal_running(tmp_path)
+
+
+def test_quit_waits_for_the_running_copy_to_exit(tmp_path):
+    import subprocess
+    import sys
+
+    assert signal_quit(tmp_path, 1)  # nobody there: nothing to wait for
+    # A child that serves the channel and exits a moment after it is asked
+    # to quit, as the app does once the window is gone.
+    child = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import sys, threading, time\n"
+            "from pathlib import Path\n"
+            "from previously_on.app.instance import InstanceServer\n"
+            "done = threading.Event()\n"
+            "InstanceServer(Path(sys.argv[1]), lambda: None, done.set)\n"
+            "print('up', flush=True)\n"
+            "done.wait(30); time.sleep(0.5)\n",
+            str(tmp_path),
+        ],
+        stdout=subprocess.PIPE,
+    )
+    try:
+        assert child.stdout.readline() == b"up\n"
+        assert signal_quit(tmp_path, 10)
+        assert child.poll() is not None
+    finally:
+        child.kill()
+
+
+def test_a_copy_that_does_not_exit_in_time_is_reported(tmp_path):
+    asked = threading.Event()
+    server = InstanceServer(tmp_path, lambda: None, asked.set)  # this process: it stays up
+    try:
+        assert not signal_quit(tmp_path, 0.2)
+        assert asked.wait(2)
+    finally:
+        server.close()
+
+
+def test_a_copy_without_quit_only_shows(tmp_path):
+    shown = threading.Event()
+    server = InstanceServer(tmp_path, shown.set)
+    try:
+        assert signal_quit(tmp_path, 0.2)  # an older copy: no pid comes back
+        assert not shown.wait(0.5)
+    finally:
+        server.close()
 
 
 def test_a_stale_port_that_is_not_us_is_ignored(tmp_path):
