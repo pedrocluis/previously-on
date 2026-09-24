@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+from .. import card
 from ..events import Event, EventType
 from ..recap import index as index_mod
 from ..recap.gap import Tier, describe_gap, pick_tier, render
@@ -211,38 +212,22 @@ def timeline(game: str, data_dir: Path | None) -> list[dict]:
 
 
 def totals(game: str, data_dir: Path | None) -> dict:
-    """``112 hours · 847 deaths · Bayle took 34 tries`` — the whole playthrough in one line."""
-    seconds = 0.0
-    deaths = 0
-    felled: list[dict] = []
-    first: datetime | None = None
-    last: datetime | None = None
-    logs = list_logs(game, data_dir)
-    for log in logs:
-        meta, events = read_session(log)
-        stats = compute(events, duration=meta.duration)
-        seconds += stats.duration
-        deaths += stats.deaths
-        felled.extend(_boss(b) for b in stats.bosses if b.defeated)
-        first = meta.started if first is None else min(first, meta.started)
-        ended = meta.ended or meta.started
-        last = ended if last is None else max(last, ended)
-    hardest = max(felled, key=lambda b: b["attempts"], default=None)
-    hours = seconds / 3600
-    parts = [f"{hours:.0f} hour{'s' if round(hours) != 1 else ''}" if hours >= 1 else format_duration(seconds)]
-    parts.append(f"{deaths} death{'s' if deaths != 1 else ''}")
-    if hardest is not None and hardest["attempts"] > 1:
-        parts.append(f"{hardest['name']} took {hardest['attempts']} tries")
+    """``112 hours · 847 deaths · Bayle took 34 tries`` — the whole playthrough
+    in one line, the share card's numbers (a fight that spans sessions counts
+    every try)."""
+    p = card.gather(game, data_dir)
+    felled = [_boss(b) for b in p.felled]
+    hardest = [_boss(b) for b in p.hardest(1)]
     return {
-        "sessions": len(logs),
-        "seconds": seconds,
-        "playtime": format_duration(seconds),
-        "deaths": deaths,
+        "sessions": p.sessions,
+        "seconds": p.seconds,
+        "playtime": format_duration(p.seconds),
+        "deaths": p.deaths,
         "bosses_felled": len(felled),
-        "hardest": hardest,
-        "first": first.isoformat(timespec="seconds") if first else None,
-        "last": last.isoformat(timespec="seconds") if last else None,
-        "line": " · ".join(parts) if logs else "",
+        "hardest": hardest[0] if hardest else None,
+        "first": p.first.isoformat(timespec="seconds") if p.first else None,
+        "last": p.last.isoformat(timespec="seconds") if p.last else None,
+        "line": card.line(p),
     }
 
 

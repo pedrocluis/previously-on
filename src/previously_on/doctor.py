@@ -153,6 +153,15 @@ def _download_mark() -> str:
     return f"marked as downloaded ({zone}); allowed by {config.name}"
 
 
+def _card() -> str:
+    """Draw a share card: the woff2 needs FreeType built with brotli, and
+    the variation axes need its MM support — both come with Pillow's wheel."""
+    from .card import Playthrough, render
+
+    img = render(Playthrough("eldenring", sessions=1, seconds=3600.0), "Elden Ring")
+    return f"{img.width}x{img.height}"
+
+
 def _run(name: str, fn: Callable[[], str], required: bool = True) -> Check:
     try:
         return Check(name, True, fn(), required)
@@ -165,6 +174,7 @@ def run_checks() -> list[Check]:
         _run("ui files", _ui_files),
         _run("game profiles", _profiles),
         _run("ocr", _ocr),
+        _run("share card", _card),
         _run("window", _webview_platform),
         # Required where the bundle ships: no tray there is a packaging bug.
         _run("tray", _tray, required=sys.platform == "win32"),

@@ -10,13 +10,15 @@ picked (``select_game``), otherwise the one played last.
 
 from __future__ import annotations
 
+import base64
 import os
 import subprocess
 import sys
 import threading
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from .. import card as card_mod
 from ..games import GameProfile
 from ..recap.store import sessions_dir, summarize_after_run
 from ..session import default_data_dir
@@ -37,6 +39,7 @@ class Api:
         *,
         game: str | None = None,
         autostart: Autostart | None = None,
+        save_dialog: Callable[[str], str | None] | None = None,
     ) -> None:
         self._profiles = {p.id: p for p in ((profiles,) if isinstance(profiles, GameProfile) else profiles)}
         if not self._profiles:
@@ -53,6 +56,9 @@ class Api:
         self._summarizing: dict = {"state": "idle", "session": None, "message": ""}
         self._autostart = autostart
         self.tray = False  # set by run_app once the tray icon is up
+        # Asks where to save a file (suggested name → path, or None if
+        # cancelled). Without one (tests, no window) the card goes to the data dir.
+        self._save_dialog = save_dialog
 
     # --- which game --------------------------------------------------------
 
@@ -119,6 +125,49 @@ class Api:
 
     def search(self, query: str, kinds: list[str] | None = None) -> dict:
         return self._guard(lambda: {"hits": views.search(self._profile().id, self._data_dir, query, kinds)})
+
+    # --- share card -------------------------------------------------------------
+
+    def card(self) -> dict:
+        """The share card as a PNG data URL, for the page to show and copy."""
+
+        def load():
+            p = self._profile()
+            play = card_mod.gather(p.id, self._data_dir)
+            if not play.sessions:
+                return {"error": "nothing logged yet: the card needs at least one session"}
+            data = base64.b64encode(card_mod.png(play, p.display_name)).decode("ascii")
+            return {
+                "png": f"data:image/png;base64,{data}",
+                "filename": card_mod.filename(p.id),
+                "line": card_mod.line(play),
+            }
+
+        return self._guard(load)
+
+    def save_card(self) -> dict:
+        """Ask where to save the card and write it there."""
+
+        def save():
+            p = self._profile()
+            play = card_mod.gather(p.id, self._data_dir)
+            if not play.sessions:
+                return {"error": "nothing logged yet: the card needs at least one session"}
+            name = card_mod.filename(p.id)
+            if self._save_dialog is not None:
+                chosen = self._save_dialog(name)
+                if not chosen:
+                    return {"cancelled": True}
+                path = Path(chosen)
+            else:
+                path = (self._data_dir or default_data_dir()) / "cards" / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+            if path.suffix.lower() != ".png":
+                path = path.with_name(path.name + ".png")
+            path.write_bytes(card_mod.png(play, p.display_name))
+            return {"saved": str(path)}
+
+        return self._guard(save)
 
     # --- capture ---------------------------------------------------------------
 

@@ -189,3 +189,28 @@ def test_two_bosses_folded_for_want_of_a_defeat_credit_the_second():
 def test_unknown_boss_is_unaffected_by_the_credit_rule():
     events = [ev(1, EventType.BOSS_DEFEATED)]
     assert [b.name for b in compute(events).bosses] == ["unknown boss"]
+
+
+def test_a_fight_left_standing_carries_its_deaths_into_the_next_session():
+    from previously_on.stats import BossStat, across_sessions
+
+    fights = [
+        BossStat("Red Wolf of Radagon", 2, True),
+        BossStat("Rennala, Queen of the Full Moon", 20, False),  # evening one
+        BossStat("Rennala Queen of the Full Moon", 14, True, ["Rennala, Full Moon"]),  # evening two, OCR slip
+        BossStat("Royal Knight Loretta", 3, False),  # still standing at the end
+    ]
+    out = across_sessions(fights)
+    assert [(f.name, f.attempts, f.defeated) for f in out] == [
+        ("Red Wolf of Radagon", 2, True),
+        ("Rennala Queen of the Full Moon", 34, True),
+        ("Royal Knight Loretta", 3, False),
+    ]
+    assert out[1].phases == ["Rennala, Full Moon"]  # the first evening's spelling folds into the name
+
+
+def test_a_felled_boss_does_not_lend_its_tries_to_a_namesake():
+    from previously_on.stats import BossStat, across_sessions
+
+    out = across_sessions([BossStat("Night's Cavalry", 3, True), BossStat("Night's Cavalry", 1, True)])
+    assert [f.attempts for f in out] == [3, 1]

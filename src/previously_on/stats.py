@@ -170,3 +170,37 @@ def summary_line(stats: SessionStats) -> str:
         last = stats.bosses[-1]
         parts.append(f"{last.name} felled in {last.attempts} {'try' if last.attempts == 1 else 'tries'}")
     return " · ".join(parts)
+
+
+def across_sessions(fights: list[BossStat]) -> list[BossStat]:
+    """Join fights that span sessions, for playthrough totals.
+
+    ``compute`` sees one session, so a boss that took 20 deaths one evening
+    and 14 the next is two fights: one still standing, one felled in 15.
+    Here a fight left standing is carried into the next fight with the same
+    boss (any of its bar names) and its deaths are added to that one's
+    tries. ``fights`` is every session's ``bosses`` in play order; the
+    result keeps that order, each joined fight at the place it resumed.
+
+    A standing fight joins the *next* fight with that name, wherever it
+    is — two different Night's Cavalry share a name, and a death to the
+    first counts toward the second. Rare, and not a fight the card leads
+    with.
+    """
+    out: list[BossStat] = []
+    for fight in fights:
+        names = [fight.name, *fight.phases]
+        prior = next(
+            (
+                f
+                for f in out
+                if not f.defeated and any(_same_name(a, b) for a in (f.name, *f.phases) for b in names)
+            ),
+            None,
+        )
+        if prior is not None:
+            out.remove(prior)
+            extra = [p for p in (prior.name, *prior.phases) if not any(_same_name(p, n) for n in names)]
+            fight = BossStat(fight.name, prior.attempts + fight.attempts, fight.defeated, [*fight.phases, *extra])
+        out.append(fight)
+    return out

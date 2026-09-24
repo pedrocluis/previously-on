@@ -97,6 +97,11 @@ def build_parser() -> argparse.ArgumentParser:
     se.add_argument("--data-dir", type=Path)
     se.add_argument("--kind", choices=["item", "area", "checkpoint", "boss", "npc"], action="append")
 
+    cd = sub.add_parser("card", help="draw the share card for the whole playthrough (a PNG, no network)")
+    _add_game_arg(cd)
+    cd.add_argument("--data-dir", type=Path)
+    cd.add_argument("--out", type=Path, help="where to write it (default: previously-on-<game>-<date>.png here)")
+
     ap = sub.add_parser("app", help="open the desktop window (resume screen, sessions, timeline) and watch for any game")
     ap.add_argument(
         "--game",
@@ -362,6 +367,19 @@ def cmd_search(args: argparse.Namespace) -> int:
     return 0 if hits else 1
 
 
+def cmd_card(args: argparse.Namespace) -> int:
+    from . import card
+
+    play = card.gather(args.game, args.data_dir)
+    if not play.sessions:
+        print(f"no sessions logged for {args.game}", file=sys.stderr)
+        return 1
+    out = args.out or Path(card.filename(args.game))
+    out.write_bytes(card.png(play, get_profile(args.game).display_name))
+    print(f"{out}  {card.line(play)}")
+    return 0
+
+
 def cmd_app(args: argparse.Namespace) -> int:
     from .app import run_app
 
@@ -406,6 +424,7 @@ def main(argv: list[str] | None = None) -> int:
         "summarize": cmd_summarize,
         "recap": cmd_recap,
         "search": cmd_search,
+        "card": cmd_card,
         "app": cmd_app,
         "games": cmd_games,
         "check": cmd_check,

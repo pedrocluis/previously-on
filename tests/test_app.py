@@ -7,6 +7,7 @@ import os
 import threading
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from previously_on.app import views
 from previously_on.app.api import Api
@@ -439,3 +440,77 @@ def test_gui_entry_logs_to_app_log(tmp_path, monkeypatch):
     assert text.startswith("--- ") and "previously-on" in text
     assert "hello from the window" in text
     assert started == {"background": True}  # the sign-in start
+
+
+# --- share card -----------------------------------------------------------------
+
+
+SESSION_C = [  # the evening after SESSION_B: Rennala again, one more death, then down
+    ev(20, E.BOSS_ENGAGED, "Rennala, Queen of the Full Moon"),
+    ev(60, E.DEATH, "YOU DIED"),
+    ev(120, E.BOSS_ENGAGED, "Rennala, Queen of the Full Moon"),
+    ev(200, E.BOSS_DEFEATED, "LEGEND FELLED"),
+]
+
+
+def test_totals_count_the_tries_of_a_fight_across_sessions(tmp_path, eldenring):
+    playthrough(tmp_path, eldenring)
+    write_session(tmp_path, datetime(2026, 9, 17, 21, 0), SESSION_C)
+    t = views.totals(GAME, tmp_path)
+    # Two deaths on the 16th, one on the 17th, then the winning try.
+    assert t["line"] == "14m · 4 deaths · Rennala, Queen of the Full Moon took 4 tries"
+    assert t["bosses_felled"] == 2 and t["hardest"]["attempts"] == 4
+
+
+def test_card_numbers_and_image(tmp_path, eldenring):
+    from previously_on import card
+
+    playthrough(tmp_path, eldenring)
+    write_session(tmp_path, datetime(2026, 9, 17, 21, 0), SESSION_C)
+    p = card.gather(GAME, tmp_path)
+    assert (p.sessions, p.deaths, len(p.felled)) == (3, 4, 2)
+    assert [(f.name, f.attempts) for f in p.hardest()] == [
+        ("Rennala, Queen of the Full Moon", 4),
+        ("Red Wolf of Radagon", 2),
+    ]
+    assert p.areas == ["Liurnia of the Lakes", "Raya Lucaria Academy"]
+    assert card.date_span(p.first, p.last) == "15 – 17 Sep 2026"
+    img = card.render(p, "Dark Souls II: Scholar of the First Sin")  # the long title, with a subtitle
+    assert img.size == (card.WIDTH, card.HEIGHT)
+    assert card.png(p, "Elden Ring").startswith(b"\x89PNG")
+
+
+def test_card_date_span():
+    from previously_on.card import date_span
+
+    d = datetime
+    assert date_span(d(2026, 9, 16, 20), d(2026, 9, 16, 23)) == "16 Sep 2026"
+    assert date_span(d(2026, 9, 28), d(2026, 10, 3)) == "28 Sep – 3 Oct 2026"
+    assert date_span(d(2025, 12, 30), d(2026, 1, 2)) == "30 Dec 2025 – 2 Jan 2026"
+    assert date_span(None, None) == ""
+
+
+def test_card_playtime():
+    from previously_on.card import playtime
+
+    assert playtime(112 * 3600) == ("112", "hours")
+    assert playtime(3600) == ("1", "hour")
+    assert playtime(2500) == ("41", "minutes")
+
+
+def test_api_card_and_save(tmp_path, eldenring):
+    api = Api(eldenring, tmp_path, None, AppConfig())
+    assert "error" in api.card() and "error" in api.save_card()  # nothing logged yet
+    playthrough(tmp_path, eldenring)
+    r = api.card()
+    assert r["png"].startswith("data:image/png;base64,") and r["filename"].startswith("previously-on-eldenring-")
+    # No window: the card lands in the data dir.
+    saved = Path(api.save_card()["saved"])
+    assert saved.parent == tmp_path / "cards" and saved.read_bytes().startswith(b"\x89PNG")
+    # A window: its dialog picks the path; a missing extension is added, a cancel writes nothing.
+    asked = []
+    target = tmp_path / "mine"
+    api = Api(eldenring, tmp_path, None, AppConfig(), save_dialog=lambda name: asked.append(name) or str(target))
+    assert api.save_card() == {"saved": str(target) + ".png"} and asked == [r["filename"]]
+    api = Api(eldenring, tmp_path, None, AppConfig(), save_dialog=lambda name: None)
+    assert api.save_card() == {"cancelled": True}
