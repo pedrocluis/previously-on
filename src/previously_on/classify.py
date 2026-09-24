@@ -59,6 +59,24 @@ def match_vocab(
     return best
 
 
+# A credits row of names and job titles that OCR read as one centred line:
+# six words or more, at least 90 % of them capitalised. Across the dialogue
+# of four finished runs (Sekiro, the three Dark Souls) the most capitalised
+# real line is 0.86 ("Consume 4 Prayer Beads to Enhance Physical
+# Attributes?", a Sekiro confirmation box) and the most capitalised
+# subtitle 0.83 ("The Senpou Temple on Mount Kongo..."); staff rows from
+# the Dark Souls III and Sekiro credits are 1.0 ("Senior Analyst Daniel Pak
+# Specialist Alana Sherer…!", "Jianhui Wang Qingmei Zhao Vana Hh.").
+NAME_ROW_MIN_WORDS = 6
+NAME_ROW_CAPITALISED = 0.9
+_WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
+
+
+def is_name_row(text: str) -> bool:
+    words = _WORD.findall(text)
+    return len(words) >= NAME_ROW_MIN_WORDS and sum(w[0].isupper() for w in words) >= NAME_ROW_CAPITALISED * len(words)
+
+
 def title_case(text: str) -> str:
     """Render an all-caps banner as a readable name ("LIMGRAVE" -> "Limgrave")."""
     small = {"OF", "THE", "AND", "OR", "IN", "AT", "ON", "TO", "A", "AN"}

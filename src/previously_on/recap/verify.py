@@ -116,19 +116,25 @@ def verify(
             for part in _parts(place)
         )
 
-    def known_name(name: str, cited_texts: list[str], extra: list[str]) -> bool:
-        """The log (cited lines first, then any line this session), the previous
-        state, or ``extra`` must contain the name or, for a combined name, a part."""
+    def said_here(name: str, cited_texts: list[str], extra: list[str]) -> bool:
+        """The log (cited lines first, then any line this session) or ``extra``
+        must contain the name or, for a combined name, a part."""
         return any(
-            _mentioned(part, cited_texts)
-            or _mentioned(part, texts)
-            or any(_same(part, p) for p in prior_names + extra)
+            _mentioned(part, cited_texts) or _mentioned(part, texts) or any(_same(part, x) for x in extra)
             for part in _parts(name)
         )
 
+    def known_name(name: str, cited_texts: list[str], extra: list[str]) -> bool:
+        """``said_here``, or the previous state holds the name."""
+        return said_here(name, cited_texts, prior_names + extra)
+
     # Conversations: keep the ones with real citations; speakers must be earned.
     # A name established earlier this session ("Me. Varre.") carries to the
-    # same speaker's later conversations, as it does from the previous state.
+    # same speaker's later conversations. The previous state does not make a
+    # speaker "named": knowing Gideon from last time is a guess about who is
+    # talking at the Roundtable Hold tonight (the Elden Ring eval's chunk 12
+    # stated it as fact with no "Gideon" in the session), so it is "inferred",
+    # which the recap hedges.
     conversations: list[Conversation] = []
     named_here: list[str] = []
     for c in recap.conversations:
@@ -138,10 +144,10 @@ def verify(
             continue
         if c.speaker and c.speaker_basis == "named":
             lines = [events[i].text for i in c.events]
-            if known_name(c.speaker, lines, named_here):
+            if said_here(c.speaker, lines, named_here):
                 named_here.append(c.speaker)
             else:
-                dropped.append(f"conversation {c.speaker}: 'named' but the name is not in the cited lines; now inferred")
+                dropped.append(f"conversation {c.speaker}: 'named' but no line this session says the name; now inferred")
                 c.speaker_basis = "inferred"
         if not c.speaker:
             c.speaker_basis = "unknown"

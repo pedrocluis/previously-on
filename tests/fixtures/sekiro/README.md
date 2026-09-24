@@ -19,6 +19,11 @@ events on negative frames).
   `EVKiAeVHjf8`), first five minutes at 1080p as
   `recordings/sekiro/deaths/montage.webm`. Native layout, no stream
   overlay. `boss_juzou.jpg` and two dialogue frames come from it too.
+* **End credits** — the playthrough's upload cuts before them, so the
+  `neg_credits_*` frames come from "Sekiro Shadows Die Twice Final Boss
+  Walkthrough - Ending Credits" by Cerealkillerz (YouTube `oPMgx7-dTwU`,
+  1080p60) as `recordings/sekiro/credits/oPMgx7-dTwU.webm`; the channel's
+  watermark sits top right, outside every region.
 
 Cut a frame with
 `ffmpeg -ss T -i VIDEO -frames:v 1 -q:v 3 out.jpg`, then check it with
@@ -35,7 +40,7 @@ what the classifier sees on the JPEG **as stored**.
 | Boss bar | 10 | four bar lengths, a bright arena, the 危 mark over the area band, and a bar with an NPC shouting over it |
 | Item popup | 8 | one, two and three rows; a name with a rank digit; names the font glues; the Memory and Remnant a boss drops, whose colon must survive |
 | Dialogue | 6 | both subtitle bands, the longest line in the game so far, a line during a boss fight |
-| Negative | 13 | the reading screen, the status menu, an item description, the channel's intro card, open world, the start-up WARNING; three of the Sculptor's menus, whose wooden frame has light end caps where the boss bar's are and whose headers sit where a boss name sits; two frames of its description panel, which ends at the same x as an item name; and the two confirmation boxes, drawn in the subtitle's own band |
+| Negative | 19 | six frames of the game's end credits (two staff rows OCR joins into one centred line, four licence lines); the reading screen, the status menu, an item description, the channel's intro card, open world, the start-up WARNING; three of the Sculptor's menus, whose wooden frame has light end caps where the boss bar's are and whose headers sit where a boss name sits; two frames of its description panel, which ends at the same x as an item name; and the two confirmation boxes, drawn in the subtitle's own band |
 
 Negatives matter most: a recap that invents an event is far worse than one
 that misses it. Label *everything* visible in a frame — a pickup still on

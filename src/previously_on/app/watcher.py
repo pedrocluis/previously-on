@@ -222,6 +222,7 @@ class Watcher:
             ocr,
             log,
             on_event=self._record,
+            on_revise=self._revise,
             should_stop=lambda: self._stop.is_set() or game_gone.is_set(),
         )
         self._detector = detector
@@ -247,6 +248,16 @@ class Watcher:
                 game_gone.set()
                 return
             game_gone.wait(POLL)
+
+    def _revise(self, ev: Event) -> None:
+        """A better read of an event already in the feed: show its new text
+        (``last_event`` is the same dict as the feed's newest entry)."""
+        Detector._print_revise(ev)
+        d = event_to_dict(ev)
+        with self._lock:
+            for old in self.recent:
+                if old["t_rel"] == d["t_rel"] and old["type"] == d["type"]:
+                    old.update(d)
 
     def _record(self, ev: Event) -> None:
         Detector._print_event(ev)

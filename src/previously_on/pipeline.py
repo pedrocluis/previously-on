@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 
 from .capture import Frame, FrameSource
-from .dedupe import Deduper
+from .dedupe import Deduper, Verdict
 from .diff import RegionWatcher, has_text_like_content
 from .events import Event
 from .games import GameProfile
@@ -26,6 +26,7 @@ class DetectorStats:
     ocr_calls: int = 0
     events: int = 0
     suppressed: int = 0
+    revised: int = 0  # suppressed repeats that replaced a worse read
 
 
 def classify_image(image, profile: GameProfile, ocr: Ocr, only_region: str | None = None):
@@ -51,6 +52,7 @@ class Detector:
         ocr: Ocr,
         log: SessionLog,
         on_event: Callable[[Event], None] | None = None,
+        on_revise: Callable[[Event], None] | None = None,
         verbose: bool = False,
         debug_dir: Path | None = None,
         debug_every: float = 30.0,
@@ -61,6 +63,8 @@ class Detector:
         self.ocr = ocr
         self.log = log
         self.on_event = on_event or self._print_event
+        # Called with a logged event whose text was just replaced by a better read.
+        self.on_revise = on_revise or self._print_revise
         # Checked once per frame; live sources never end on their own, so this
         # is how the game exiting (or the app closing) stops the loop from
         # another thread. Ctrl-C still works for the CLI.
@@ -82,6 +86,10 @@ class Detector:
     @staticmethod
     def _print_event(ev: Event) -> None:
         print(f"[{ev.t_rel:8.1f}s] {ev.type.value:22s} {ev.text}  ({ev.conf:.2f})", file=sys.stderr)
+
+    @staticmethod
+    def _print_revise(ev: Event) -> None:
+        print(f"[{ev.t_rel:8.1f}s] {'  ↳ better read':22s} {ev.text}  ({ev.conf:.2f})", file=sys.stderr)
 
     def process(self, frame: Frame) -> list[Event]:
         self.stats.frames += 1
@@ -118,7 +126,15 @@ class Detector:
                     frame_index=frame.index,
                 )
                 self._quiet_until[region.name] = frame.t_rel + self._quiet.get(region.name, 0.0)
-                if not self.deduper.accept(event):
+                verdict, kept = self.deduper.offer(event)
+                if verdict is Verdict.UPGRADE and kept is not None:
+                    # A better read of something already logged: keep its
+                    # time, take the new text.
+                    kept.text, kept.conf, kept.raw = event.text, event.conf, event.raw
+                    self.log.revise(kept)
+                    self.stats.revised += 1
+                    self.on_revise(kept)
+                if verdict is not Verdict.NEW:
                     self.stats.suppressed += 1
                     continue
                 self.log.append(event)

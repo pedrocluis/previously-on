@@ -131,6 +131,21 @@ def test_verify_accepts_names_and_references_carried_from_previous_state():
     assert out.state.threads[0].evidence == ["20260915-200000#7", f"{sid}#0"]
 
 
+def test_speaker_known_only_from_previous_state_is_inferred():
+    # Elden Ring eval, chunk 12: "Gideon Ofnir" was in the state, the session
+    # never says his name, and the recap stated the attribution as fact.
+    sid = "20260916-220000"
+    prior = PlaythroughState(npcs=[NpcState(name="Gideon Ofnir", last_location="Roundtable Hold", evidence=["20260915-200000#7"])])
+    recap = _recap(
+        conversations=[Conversation(speaker="Gideon Ofnir", speaker_basis="named", events=[2], gist="take what you need")],
+        state=prior.model_copy(deep=True),
+    )
+    out, dropped = verify(recap, SESSION, prior, sid)
+    assert out.conversations[0].speaker_basis == "inferred"
+    assert any("Gideon Ofnir" in d and "now inferred" in d for d in dropped)
+    assert [x.name for x in out.state.npcs] == ["Gideon Ofnir"]  # the state entry itself stands
+
+
 def test_verify_accepts_combined_names_session_wide_mentions_and_caps_items():
     sid = "20260916-220000"
     recap = _recap(

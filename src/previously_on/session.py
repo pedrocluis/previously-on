@@ -3,6 +3,10 @@
 Layout: ``<data_dir>/sessions/<game>/<YYYYMMDD-HHMMSS>.jsonl``. The first line
 is ``session_start``, then one ``event`` per line, then ``session_end``. Every
 write is flushed so a crash mid-session loses nothing already seen.
+
+A ``revise`` line replaces the text of an event logged earlier (by its
+position among the events) with a better read of the same banner; the log
+stays append-only and ``read_session`` applies it.
 """
 
 from __future__ import annotations
@@ -71,9 +75,25 @@ class SessionLog:
         self._fh.flush()
 
     def append(self, event: Event) -> None:
+        event.index = self.count
         self._fh.write(event.to_json() + "\n")
         self._fh.flush()
         self.count += 1
+
+    def revise(self, event: Event) -> None:
+        """Record ``event``'s current text, conf and raw lines as the better
+        read of the event already logged at ``event.index``."""
+        if not 0 <= event.index < self.count:
+            raise ValueError(f"event {event.index} is not in this log")
+        self._write(
+            {
+                "kind": "revise",
+                "index": event.index,
+                "text": event.text,
+                "conf": round(event.conf, 3),
+                "raw": event.raw,
+            }
+        )
 
     def close(self, ended: datetime | None = None, played: float | None = None) -> None:
         """``played`` is the session length in seconds of game time; for a
@@ -115,7 +135,14 @@ def read_session(path: str | Path) -> tuple[SessionMeta, list[Event]]:
                 if "played" in obj:
                     meta.played = float(obj["played"])
             elif kind == "event":
-                events.append(Event.from_dict(obj))
+                event = Event.from_dict(obj)
+                event.index = len(events)
+                events.append(event)
+            elif kind == "revise" and 0 <= obj.get("index", -1) < len(events):
+                event = events[obj["index"]]
+                event.text = obj["text"]
+                event.conf = float(obj.get("conf", event.conf))
+                event.raw = list(obj.get("raw", event.raw))
     if meta is None:
         raise ValueError(f"{path}: missing session_start line")
     return meta, events

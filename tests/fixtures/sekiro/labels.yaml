@@ -289,6 +289,27 @@
 - file: neg_outro_card.jpg
   t: 28910.0         # chunk 07 t 3710; the channel's outro, not game credits
   expected: []
+# The game's end credits, from Cerealkillerz's final-boss upload
+# (oPMgx7-dTwU, recordings/sekiro/credits/); `t` is the second in it. Each
+# frame was logged as dialogue before the credits guards.
+- file: neg_credits_staff_1.jpg
+  t: 808.75          # "Seigo Oyama Additional Debug DIGITALHearts Co..Lid."
+  expected: []
+- file: neg_credits_staff_2.jpg
+  t: 832.5           # "Kei Hirata TOSESOFTWARE(HANGZHOU)CO.,LTD."
+  expected: []
+- file: neg_credits_licence_1.jpg
+  t: 1094.0          # the Havok copyright block
+  expected: []
+- file: neg_credits_licence_2.jpg
+  t: 1095.0          # "1999-2019 Havok softwareis02019Microsoft.Alrightsreserved."
+  expected: []
+- file: neg_credits_licence_3.jpg
+  t: 1096.5          # "Uses Autodesk® Scaleform®. © Copyright 2019 Autodesk, Inc."
+  expected: []
+- file: neg_credits_licence_4.jpg
+  t: 1099.0          # "This software uses fonts produced by FONTWORKS Inc."
+  expected: []
 - file: neg_skills_desc.jpg
   t: 2570.5          # chunk 01; Acquire Skills — its description panel ends
   expected: []       # at the same x as an item name

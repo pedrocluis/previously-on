@@ -25,7 +25,7 @@ import cv2
 import numpy as np
 from rapidfuzz import fuzz
 
-from ..classify import join_rows, match_vocab, normalize, respace, word_count
+from ..classify import is_name_row, join_rows, match_vocab, normalize, respace, word_count
 from ..events import EventType
 from ..ocr import OcrLine
 from ..regions import Region, crop
@@ -194,6 +194,26 @@ _GLUED_WORDS = re.compile(r"(?<=[a-z])(?=[A-Z])")
 # Button glyphs OCR as a letter and a colon, as in Dark Souls II:
 # ":Next :Cancel", "A:Close", ": Stop hugging wall", ": Eavesdrop".
 _BUTTON_PROMPT = re.compile(r"(?:^|\s)[A-Z]?\s?[:：]\s?[A-Z]")
+# The end credits (Cerealkillerz's upload `oPMgx7-dTwU`, t 660-1110) scroll
+# through the subtitle band. Most staff rows are left- and right-aligned
+# columns that the centring rule drops, but OCR sometimes joins a title
+# column to its names into one centred row ("Senior Analyst Daniel Pak
+# Specialist Alana Sherer…!", "Harmonics International Co..Lrd."), and the
+# licence lines at the end are centred sentences ("Uses Autodesk®
+# Scaleform®. © Copyright 2019 Autodesk, Inc.", "1999-2019 Havok software is
+# © 2019 Microsoft. All rights reserved."). A company suffix ("Co." however
+# the rest is misread), a copyright word or sign, "rights reserved", a year
+# range or a web address gives the licence lines away; the staff rows are
+# names, every word capitalised (`classify.is_name_row`). Brackets decide
+# nothing, unlike Dark Souls II: Sekiro's subtitles describe sounds in them
+# ("(Cough, cough...)"). None of the 1635 dialogue lines of the eight-hour
+# run matches either rule.
+_CREDITS_TOKEN = re.compile(
+    r"[@©®]|(?i:\b(?:inc|ltd|corp|copyright)\b|\bwww\.|\.com\b|rights\s*reserved)|\bCo\b[.,]"
+    r"|[A-Z]{12,}|\b(?:19|20)\d\d\s*-\s*(?:19|20)\d\d"
+    # Two credit sentences that carry none of the above (t 1076, 1083).
+    r"|(?i:proud\s*to\s*include|performances\s*by)"
+)
 
 # UI strings that reach the item crop but are not pickups. A bare prompt
 # was read there twice ("Talk", chunks 02 and 07) and rejected both times
@@ -446,6 +466,8 @@ class SekiroProfile:
         if text[-1] not in _SENTENCE_END:
             return None
         if _BUTTON_PROMPT.search(text) or match_vocab(text, BANNER_VOCAB) is not None:
+            return None
+        if _CREDITS_TOKEN.search(text) or is_name_row(text):
             return None
         if _GLUED_WORDS.search(text):
             return None

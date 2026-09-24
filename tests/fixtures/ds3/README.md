@@ -33,6 +33,12 @@ fade in that edit; the frames are the brightest moment of each. The
 Pontiff Sulyvahn bar under the banner reads fine but its border is
 darkened with the scene, so it is not labelled.
 
+**End credits** (`neg_credits_*.jpg`, `neg_ng_plus_prompt.jpg`,
+`area_firelink_ng_plus.jpg`): the playthrough cuts at the ending title
+card, so these come from "DS3 credits roll." (`c8DyAJgWCxY`, 1080p60, as
+`recordings/ds3/credits/c8DyAJgWCxY.webm`): the whole scroll, the licence
+screens, the NG+ prompt and the arrival at Firelink Shrine in journey 2.
+
 ## What the frames cover
 
 | Category | Frames |
@@ -40,11 +46,11 @@ darkened with the scene, so it is not labelled.
 | Death | five `YOU DIED` from the death clip (see above) |
 | Boss defeated | `HEIR OF FIRE DESTROYED` for Iudex Gundyr (×2, one with the gesture menu open and the `Coiled Sword` drop under it), Vordt of the Boreal Valley (with `Soul of Boreal Valley Vordt`) |
 | Checkpoint | six `BONFIRE LIT` |
-| Area reveal | Cemetery of Ash, Firelink Shrine (×2), High Wall of Lothric, Undead Settlement (×3) |
+| Area reveal | Cemetery of Ash, Firelink Shrine (×3, one at the start of NG+), High Wall of Lothric, Undead Settlement (×3) |
 | Boss bar | Iudex Gundyr (×2, one over a bright arena where the bottom border line reads only 0.66), Vordt of the Boreal Valley |
 | Item popup | Titanite Shard (HUD hidden), a stacked pair (Titanite Shard + Ember), Soul of an Unknown Traveler, Coiled Sword (×2, one under `EMBER RESTORED`), the `Rest` gesture, Ember, Way of Blue (a covenant), Homeward Bone, Ashen Estus Flask, Fading Soul, Binoculars, Firebomb |
 | Dialogue | the intro cutscene (no HUD), four NPC lines at Firelink Shrine and in the Undead Settlement, one wide two-sentence line (x 0.13–0.87) |
-| Negative | the title splash (`-DARK SOULS III`, `PRESS ANY BUTTON`), character creation, the level-up table, the equipment and inventory screens, the bonfire warp menu, the bonfire menu, two loading screens with item lore, open world with the HUD, a fight with damage numbers, the invasion notice, `SOULS RETRIEVED`, `DARK SPIRIT DESTROYED` with the "has died" notice, the `Read message` and `Pillage remains` prompts |
+| Negative | five frames of the end credits (staff rows with their company in brackets, the licence screens), the NG+ prompt, the title splash (`-DARK SOULS III`, `PRESS ANY BUTTON`), character creation, the level-up table, the equipment and inventory screens, the bonfire warp menu, the bonfire menu, two loading screens with item lore, open world with the HUD, a fight with damage numbers, the invasion notice, `SOULS RETRIEVED`, `DARK SPIRIT DESTROYED` with the "has died" notice, the `Read message` and `Pillage remains` prompts |
 
 ## labels.yaml format
 

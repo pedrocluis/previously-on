@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from previously_on.dedupe import Deduper
+from previously_on.dedupe import Deduper, Verdict
 from previously_on.events import Event, EventType
 
 
@@ -83,3 +83,44 @@ def test_stacked_pickups_in_one_frame_are_distinct():
     assert not d.accept(ev(33.5, EventType.ITEM_ACQUIRED, "Gargoyle Helm"))
     assert not d.accept(ev(33.5, EventType.ITEM_ACQUIRED, "Gargoyle's Shleld"))
     assert not d.accept(ev(33.0, EventType.ITEM_ACQUIRED, "Gargoyle's Shield"))  # the same row twice
+
+
+def test_a_better_spaced_read_upgrades_the_kept_one():
+    # Elden Ring hour 0, t 214-218: the glued read came first and the clean
+    # one, a few seconds later, was dropped.
+    d = Deduper({EventType.DIALOGUE: 15.0})
+    first = ev(214.0, EventType.DIALOGUE, "A warleading to abandonmentby the GreaterWill.")
+    assert d.offer(first) == (Verdict.NEW, None)
+    clean = ev(218.5, EventType.DIALOGUE, "A war leading to abandonment by the Greater Will.")
+    assert d.offer(clean) == (Verdict.UPGRADE, first)
+    # Once upgraded, the glued read is no longer better than what is kept.
+    assert d.offer(ev(219.0, EventType.DIALOGUE, "A warleading to abandonmentby the GreaterWill.")) == (Verdict.DUPLICATE, None)
+
+
+def test_confidence_upgrades_only_on_a_clear_gap():
+    d = Deduper({EventType.AREA_DISCOVERED: 30.0})
+    garbled = ev(0.0, EventType.AREA_DISCOVERED, "NChapelof Anticlpauon")
+    garbled.conf = 0.90
+    assert d.accept(garbled)
+    close = ev(1.0, EventType.AREA_DISCOVERED, "Chapel of Anticlpation")
+    close.conf = 0.93  # within OCR's jitter between two clean reads
+    assert d.offer(close) == (Verdict.DUPLICATE, None)
+    clean = ev(1.5, EventType.AREA_DISCOVERED, "Chapel of Anticipation")
+    clean.conf = 0.98
+    assert d.offer(clean) == (Verdict.UPGRADE, garbled)
+
+
+def test_a_confident_but_truncated_read_is_not_an_upgrade():
+    d = Deduper({EventType.DIALOGUE: 15.0})
+    full = ev(0.0, EventType.DIALOGUE, "Soon, Marika's offspring, demigods all, claimed the shards.")
+    full.conf = 0.85
+    assert d.accept(full)
+    cut = ev(1.0, EventType.DIALOGUE, "Soon, Marika's offspring, demigods all, claimed the")
+    cut.conf = 0.99
+    assert d.offer(cut)[0] is Verdict.DUPLICATE
+
+
+def test_by_type_events_are_never_upgraded():
+    d = Deduper({EventType.BOSS_DEFEATED: 30.0}, by_type={EventType.BOSS_DEFEATED})
+    assert d.accept(ev(0.0, EventType.BOSS_DEFEATED, "GREAT ENEMY FELLEO"))
+    assert d.offer(ev(1.0, EventType.BOSS_DEFEATED, "GREAT ENEMY FELLED")) == (Verdict.DUPLICATE, None)
