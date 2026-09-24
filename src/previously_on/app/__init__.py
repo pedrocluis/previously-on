@@ -51,10 +51,12 @@ def run_app(
     debug: bool = False,
     config_path: Path | None = None,
 ) -> int:
-    import webview
-
+    # Before importing webview: on Windows without a console its import
+    # swaps a missing stderr for os.devnull, and the log would never open.
     if sys.stderr is None:
         _log_to_file(data_dir)
+    import webview
+
     # Live capture watches every game unless one is named; a replay has no
     # process to tell the game by, so it needs one (Elden Ring by default).
     profiles = list_profiles()

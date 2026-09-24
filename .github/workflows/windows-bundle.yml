@@ -70,9 +70,10 @@ jobs:
           Start-Sleep -Seconds 30
           $log = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter app.log -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -like '*previously-on*' } | Select-Object -First 1
-          if ($log) { Write-Host "--- $($log.FullName)"; Get-Content $log.FullName }
+          if (-not $log) { Write-Error "no app.log: the window's output is going nowhere"; exit 1 }
+          Write-Host "--- $($log.FullName)"; Get-Content $log.FullName
           if ($p.HasExited) { Write-Error "PreviouslyOn.exe exited with $($p.ExitCode)"; exit 1 }
-          if ($log -and (Select-String -Path $log.FullName -Pattern 'Traceback' -Quiet)) {
+          if ((Select-String -Path $log.FullName -Pattern 'Traceback' -Quiet)) {
             Write-Error "traceback in app.log"; exit 1
           }
           Stop-Process -Id $p.Id -Force
