@@ -418,3 +418,19 @@ def test_running_profile_matches_process_names_case_insensitively(monkeypatch):
     monkeypatch.setattr(gp.psutil, "process_iter", lambda attrs: iter(procs))
     assert gp.running_profile(list_profiles()).id == "ds3"
     assert gp.running_profile([get_profile("eldenring")]) is None
+
+
+def test_gui_entry_logs_to_app_log(tmp_path, monkeypatch):
+    import sys
+
+    import previously_on.app as app
+
+    monkeypatch.setattr(app, "default_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(app, "run_app", lambda: print("hello from the window", file=sys.stderr) or 0)
+    monkeypatch.setattr(sys, "stderr", sys.stderr)  # restored after the test
+    monkeypatch.setattr(sys, "stdout", sys.stdout)
+    assert app.main() == 0
+    sys.stderr.flush()
+    text = (tmp_path / "app.log").read_text(encoding="utf-8")
+    assert text.startswith("--- ") and "previously-on" in text
+    assert "hello from the window" in text
