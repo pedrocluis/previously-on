@@ -27,7 +27,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libgirepository-2.0-dev libcairo2-dev pkg-config fonts-dejavu-core
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0  # no floating major tags since v8
         with:
           enable-cache: true
 
