@@ -28,6 +28,30 @@ jobs:
           uv run --no-sync pyinstaller --noconfirm packaging/previously-on.spec
           Copy-Item LICENSE dist/PreviouslyOn/LICENSE.txt
 
+      # A player downloads the zip in a browser and unzips it with Explorer,
+      # which marks every file as from the internet (Zone 3). .NET Framework
+      # will not load a marked DLL without packaging/exe.config, so test the
+      # folder the way a player gets it.
+      - name: Mark every file as downloaded
+        run: |
+          Get-ChildItem dist/PreviouslyOn -Recurse -File |
+            ForEach-Object { Set-Content -Path $_.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3" }
+
+      # Proves the mark is real on this runner: without the .config files
+      # the window's .NET layer must fail to load.
+      - name: Marked files fail without the .config
+        working-directory: ${{ runner.temp }}
+        run: |
+          $dir = "$env:GITHUB_WORKSPACE/dist/PreviouslyOn"
+          Get-ChildItem $dir -Filter *.exe.config | Rename-Item -NewName { $_.Name + ".off" }
+          $out = & "$dir/previously-on-cli.exe" check | Out-String
+          Write-Host $out
+          Get-ChildItem $dir -Filter *.config.off | Rename-Item -NewName { $_.Name -replace '\.off$', '' }
+          if ($out -notmatch 'FAIL window: .*Python\.Runtime') {
+            Write-Error "the window loaded from marked files without exe.config: this step no longer reproduces the bug"; exit 1
+          }
+          exit 0
+
       # The checks run from outside the repo so nothing resolves from src/.
       - name: Self-check (OCR models, window platform, WebView2, dxcam)
         working-directory: ${{ runner.temp }}
@@ -38,7 +62,11 @@ jobs:
       - name: Window starts and stays up
         working-directory: ${{ runner.temp }}
         run: |
-          $p = Start-Process "$env:GITHUB_WORKSPACE/dist/PreviouslyOn/PreviouslyOn.exe" -PassThru
+          # Not Start-Process: the shell shows the "downloaded, unsigned
+          # program" prompt for a marked exe, and nobody clicks Run here.
+          $info = [System.Diagnostics.ProcessStartInfo]::new("$env:GITHUB_WORKSPACE/dist/PreviouslyOn/PreviouslyOn.exe")
+          $info.UseShellExecute = $false
+          $p = [System.Diagnostics.Process]::Start($info)
           Start-Sleep -Seconds 30
           $log = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter app.log -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -like '*previously-on*' } | Select-Object -First 1

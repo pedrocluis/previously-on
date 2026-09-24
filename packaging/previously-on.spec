@@ -80,3 +80,11 @@ coll = COLLECT(
     upx=False,
     name="PreviouslyOn",
 )
+
+# pywebview reaches WinForms/WebView2 through pythonnet on .NET Framework,
+# whose root AppDomain reads <exe>.config. See packaging/exe.config.
+import shutil
+
+if sys.platform == "win32":
+    for exe in ("PreviouslyOn.exe", "previously-on-cli.exe"):
+        shutil.copyfile(ROOT + "/packaging/exe.config", f"{DISTPATH}/PreviouslyOn/{exe}.config")
