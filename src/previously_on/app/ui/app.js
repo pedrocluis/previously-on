@@ -315,6 +315,8 @@ async function renderTimeline() {
   main.innerHTML = `<p class="eyebrow">The playthrough so far</p>
     <p class="totals">${esc(t.line)}</p>
     <p class="totals-sub">${plural(t.sessions, 'session')} · ${plural(t.bosses_felled, 'boss')} felled</p>
+    <div class="row share"><button id="share">Share card</button></div>
+    <div id="card"></div>
     <hr class="rule">
     <div class="chron">` +
     r.sessions.map(s => {
@@ -328,6 +330,42 @@ async function renderTimeline() {
         </div>
       </div>`;
     }).join('') + `</div>`;
+  document.getElementById('share').onclick = showCard;
+}
+
+// The playthrough as one image to post: drawn by the app (card.py), shown
+// here, saved through the window's save dialog or copied to the clipboard.
+async function showCard() {
+  const box = document.getElementById('card');
+  const btn = document.getElementById('share');
+  if (!box.hidden && box.innerHTML) { box.hidden = true; btn.textContent = 'Share card'; return; }
+  btn.disabled = true;
+  const r = await call('card');
+  btn.disabled = false;
+  if (r.error) { box.hidden = false; box.innerHTML = errorBox(r); return; }
+  const canCopy = !!(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write);
+  box.hidden = false;
+  btn.textContent = 'Hide card';
+  box.innerHTML = `<figure class="card"><img src="${r.png}" alt="${esc(r.line)}" width="1600" height="900">
+    <figcaption class="row"><button class="primary" id="card-save">Save image…</button>
+    ${canCopy ? '<button id="card-copy">Copy image</button>' : ''}
+    <span class="hint" id="card-note">Made from the session logs on this PC. Nothing is uploaded; post it wherever you like.</span></figcaption></figure>`;
+  const note = document.getElementById('card-note');
+  document.getElementById('card-save').onclick = async () => {
+    const s = await call('save_card');
+    if (s.error) note.innerHTML = `<span class="error">${esc(s.error)}</span>`;
+    else if (s.saved) note.textContent = `Saved to ${s.saved}`;
+  };
+  const copy = document.getElementById('card-copy');
+  if (copy) copy.onclick = async () => {
+    try {
+      const blob = await (await fetch(r.png)).blob();
+      await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+      note.textContent = 'Copied. Paste it into a post or a chat.';
+    } catch (e) {
+      note.innerHTML = `<span class="error">Could not copy here (${esc(e && e.message || e)}). Save it instead.</span>`;
+    }
+  };
 }
 
 // --- search -----------------------------------------------------------------------
