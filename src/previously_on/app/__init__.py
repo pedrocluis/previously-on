@@ -18,11 +18,14 @@ from pathlib import Path
 
 from ..capture import open_source
 from ..games import get_profile, list_profiles
+from ..recap.store import summarize_after_run
 from ..session import default_data_dir
+from .account import Account
 from .api import Api
 from .autostart import BACKGROUND_FLAG, Autostart
 from .config import AppConfig, default_config_path
 from .instance import InstanceServer, signal_quit, signal_running
+from .sync import SyncWorker
 from .watcher import Watcher
 
 WINDOW_TITLE = "Previously On"
@@ -108,11 +111,28 @@ def run_app(
     if getattr(sys, "frozen", False) and autostart.refresh():
         print("start at sign-in now points at this copy", file=sys.stderr)
 
+    # Sign-in and sync. The api's config is the one Settings changes, so the
+    # worker asks it for the synced games each time.
+    account = Account()
+    api: Api | None = None
+    sync = SyncWorker(account, data_dir, lambda: api._config.sync_games if api else config.sync_games)
+    account.on_signed_in = sync.enqueue_all
+
+    def summarize_and_sync(log: Path, profile):
+        """Upload a session when it ends, and again once its recap is written."""
+        sync.enqueue(profile.id)
+        try:
+            return summarize_after_run(log, profile)
+        finally:
+            sync.enqueue(profile.id)
+
     watcher: Watcher | None = None
     if watch:
         mon = monitor or config.monitor
         if live:
-            watcher = Watcher([get_profile(game)] if game else profiles, data_dir, monitor=mon)
+            watcher = Watcher(
+                [get_profile(game)] if game else profiles, data_dir, monitor=mon, summarize=summarize_and_sync
+            )
         else:
             # Replay: drive the window from a recording, once (no game here).
             game = game or "eldenring"
@@ -123,6 +143,7 @@ def run_app(
                 wait_for_game=False,
                 low_priority=False,
                 ocr_threads=-1,
+                summarize=summarize_and_sync,
             )
         if config.watch_on_start or not live:
             watcher.start()
@@ -135,8 +156,18 @@ def run_app(
         return chosen or None
 
     api = Api(
-        profiles, data_dir, watcher, config, config_path, game=game, autostart=autostart, save_dialog=save_dialog
+        profiles,
+        data_dir,
+        watcher,
+        config,
+        config_path,
+        game=game,
+        autostart=autostart,
+        save_dialog=save_dialog,
+        account=account,
+        sync=sync,
     )
+    sync.enqueue_all()  # catch up on whatever ended while the app was closed
     window = None
     quitting = threading.Event()
 

@@ -22,10 +22,9 @@ from pathlib import Path
 
 from rapidfuzz import fuzz
 
-from .classify import normalize
-from .recap.store import sessions_dir
-from .session import read_session
-from .stats import SAME_AREA, BossStat, across_sessions, compute, format_duration
+from .text import normalize
+from .session import SessionMeta, read_session, sessions_dir
+from .stats import SAME_AREA, BossStat, SessionStats, across_sessions, compute, format_duration
 
 WIDTH, HEIGHT = 1600, 900
 MARGIN = 104
@@ -67,13 +66,22 @@ class Playthrough:
 
 
 def gather(game: str, data_dir: Path | None) -> Playthrough:
-    p = Playthrough(game)
     directory = sessions_dir(game, data_dir)
     logs = sorted(directory.glob("*.jsonl")) if directory.is_dir() else []
-    fights: list[BossStat] = []
+    sessions = []
     for log in logs:
         meta, events = read_session(log)
-        stats = compute(events, duration=meta.duration)
+        sessions.append((meta, compute(events, duration=meta.duration)))
+    return gather_stats(game, sessions)
+
+
+def gather_stats(game: str, sessions: list[tuple[SessionMeta, SessionStats]]) -> Playthrough:
+    """The playthrough from each session's stats, in play order. The website
+    caches ``SessionStats`` per synced session and totals them here, so its
+    numbers and the window's are the same code."""
+    p = Playthrough(game)
+    fights: list[BossStat] = []
+    for meta, stats in sessions:
         p.sessions += 1
         p.seconds += stats.duration
         p.deaths += stats.deaths
@@ -86,6 +94,28 @@ def gather(game: str, data_dir: Path | None) -> Playthrough:
         p.last = ended if p.last is None else max(p.last, ended)
     p.fights = across_sessions(fights)
     return p
+
+
+def boss_json(b: BossStat) -> dict:
+    return {"name": b.name, "attempts": b.attempts, "defeated": b.defeated, "phases": list(b.phases)}
+
+
+def totals(p: Playthrough) -> dict:
+    """``112 hours · 847 deaths · Bayle took 34 tries`` — the whole playthrough
+    in one line, the share card's numbers (a fight that spans sessions counts
+    every try). The window's Recap page and the website both show this."""
+    hardest = p.hardest(1)
+    return {
+        "sessions": p.sessions,
+        "seconds": p.seconds,
+        "playtime": format_duration(p.seconds),
+        "deaths": p.deaths,
+        "bosses_felled": len(p.felled),
+        "hardest": boss_json(hardest[0]) if hardest else None,
+        "first": p.first.isoformat(timespec="seconds") if p.first else None,
+        "last": p.last.isoformat(timespec="seconds") if p.last else None,
+        "line": line(p),
+    }
 
 
 def playtime(seconds: float) -> tuple[str, str]:

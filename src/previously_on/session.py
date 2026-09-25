@@ -28,6 +28,10 @@ def default_data_dir() -> Path:
     return Path(platformdirs.user_data_dir(APP_NAME))
 
 
+def sessions_dir(game: str, data_dir: Path | None = None) -> Path:
+    return (data_dir or default_data_dir()) / "sessions" / game
+
+
 @dataclass(slots=True)
 class SessionMeta:
     game: str

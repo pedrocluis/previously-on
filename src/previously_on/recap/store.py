@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from ..games import GameProfile
-from ..session import default_data_dir, read_session
+from ..session import default_data_dir, read_session, sessions_dir
 from ..stats import compute
 from . import compact as compact_mod
 from .prompt import SYSTEM, build_user
@@ -35,10 +35,6 @@ def write_record(path: Path, record: RecapRecord) -> None:
 
 def read_record(path: Path) -> RecapRecord:
     return RecapRecord.model_validate_json(path.read_text(encoding="utf-8"))
-
-
-def sessions_dir(game: str, data_dir: Path | None = None) -> Path:
-    return (data_dir or default_data_dir()) / "sessions" / game
 
 
 def list_records(game: str, data_dir: Path | None = None) -> list[Path]:

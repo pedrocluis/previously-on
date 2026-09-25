@@ -42,6 +42,7 @@ class AppConfig(BaseModel):
     model: str = ""  # empty = the provider default
     monitor: int = Field(default=1, ge=1)
     watch_on_start: bool = True
+    sync_games: list[str] = Field(default_factory=list)  # game ids that sync to the account; not secret
 
     @classmethod
     def load(cls, path: Path | None = None) -> AppConfig:

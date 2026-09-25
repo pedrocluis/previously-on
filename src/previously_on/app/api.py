@@ -24,9 +24,13 @@ from ..games import GameProfile
 from ..recap.store import sessions_dir, summarize_after_run
 from ..session import default_data_dir
 from . import views
+from .account import Account, AccountError
 from .autostart import Autostart
 from .config import AppConfig, mask_key
+from .sync import SyncWorker
 from .watcher import Watcher
+
+SITE = "https://previouslyon.gg"
 
 
 class Api:
@@ -41,6 +45,8 @@ class Api:
         game: str | None = None,
         autostart: Autostart | None = None,
         save_dialog: Callable[[str, str], str | None] | None = None,
+        account: Account | None = None,
+        sync: SyncWorker | None = None,
     ) -> None:
         self._profiles = {p.id: p for p in ((profiles,) if isinstance(profiles, GameProfile) else profiles)}
         if not self._profiles:
@@ -61,6 +67,9 @@ class Api:
         # "PNG image (*.png)" → path, or None if cancelled). Without one
         # (tests, no window) files go to the data dir.
         self._save_dialog = save_dialog
+        # Sign-in and sync; None where there is no account (tests, --no-sync).
+        self._account = account
+        self._sync = sync
 
     # --- which game --------------------------------------------------------
 
@@ -182,7 +191,7 @@ class Api:
 
     def open_url(self, url: str) -> dict:
         """Open a link in the player's browser (the window itself never navigates away)."""
-        if not url.startswith("https://github.com/pedrocluis/previously-on"):
+        if not url.startswith(("https://github.com/pedrocluis/previously-on", f"{SITE}/")):
             return {"error": "only the project's own pages open from here"}
         import webbrowser
 
@@ -206,6 +215,7 @@ class Api:
         out["watching"] = self._watcher.waiting_for() if self._watcher else None
         out["view"] = self._profile().id  # the game the screens show
         out["summarize"] = dict(self._summarizing)
+        out["sync"] = self._sync.status() if self._sync and self._account and self._account.token() else None
         return out
 
     def recent_events(self) -> dict:
@@ -239,9 +249,66 @@ class Api:
                 self._summarizing = {"state": "done" if record else "failed", "session": stamp, "message": message}
             finally:
                 self._summarize_lock.release()
+            if self._sync is not None:
+                self._sync.enqueue(profile.id)
 
         threading.Thread(target=work, name="summarize", daemon=True).start()
         return {"started": True}
+
+    # --- account and sync ----------------------------------------------------------
+
+    def account_status(self) -> dict:
+        if self._account is None:
+            return {"available": False}
+
+        def load():
+            return {
+                "available": True,
+                **self._account.status(),
+                "sync": self._sync.status() if self._sync else None,
+                "sync_games": list(self._config.sync_games),
+                "games": [{"id": p.id, "name": p.display_name} for p in self._profiles.values()],
+                "account_url": f"{SITE}/account",
+            }
+
+        return self._guard(load)
+
+    def sign_in(self) -> dict:
+        if self._account is None:
+            return {"error": "sign-in is not available in this window"}
+        try:
+            return self._account.begin_link()
+        except AccountError as e:
+            return {"error": str(e)}
+
+    def cancel_sign_in(self) -> dict:
+        if self._account is not None:
+            self._account.cancel_link()
+        return {"ok": True}
+
+    def sign_out(self) -> dict:
+        if self._account is not None:
+            self._account.sign_out()
+        return {"ok": True}
+
+    def set_sync_game(self, game: str, on: bool) -> dict:
+        if game not in self._profiles:
+            return {"error": f"unknown game {game!r}"}
+        games = [g for g in self._config.sync_games if g != game] + ([game] if on else [])
+        config = self._config.model_copy(update={"sync_games": sorted(games)})
+        try:
+            config.save(self._config_path)
+        except OSError as exc:
+            return {"error": f"could not write settings: {exc}"}
+        self._config = config
+        if on and self._sync is not None:
+            self._sync.enqueue(game)
+        return self.account_status()
+
+    def sync_now(self) -> dict:
+        if self._sync is not None:
+            self._sync.enqueue_all()
+        return {"ok": True}
 
     # --- settings --------------------------------------------------------------
 

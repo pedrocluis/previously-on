@@ -92,6 +92,13 @@ Recaps need an API key, entered in Settings or set in the environment:
 per session. **Only the text event log is ever sent, never a frame.**
 Detection, stats and search are fully offline.
 
+**Sync (optional).** Settings → Account → *Sign in* links the app to a
+[previouslyon.gg](https://previouslyon.gg/account) account; then turn sync
+on per game. Each session's event log and recap (the same two text files)
+are copied to the account when the session ends, so a second PC keeps the
+playthrough and you can read it on your phone. Nothing syncs until you turn
+a game on. What is stored: [previouslyon.gg/privacy](https://previouslyon.gg/privacy#accounts).
+
 `--no-watch` only browses what is logged; `--source video --path X.webm`
 drives the window from a recording.
 
