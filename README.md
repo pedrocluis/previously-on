@@ -5,26 +5,29 @@ reads the announcements the game already makes (`YOU DIED`, `GREAT ENEMY
 FELLED`, item popups, area names, subtitles) and logs them so that when you
 come back after a month you can be told where you left off.
 
+Website and download: **[previouslyon.gg](https://previouslyon.gg)**
+
 Supported games (PC, 16:9, English UI):
 
 | Game | `--game` | Validated on |
 |---|---|---|
-| Elden Ring | `eldenring` (default) | a 15-hour playthrough, and live on Windows |
+| Elden Ring | `eldenring` (default) | a 15-hour playthrough |
 | Dark Souls: Remastered | `dsr` | a 6.6-hour playthrough |
 | Dark Souls II: Scholar of the First Sin | `ds2` | an 8.6-hour playthrough |
 | Dark Souls III | `ds3` | a 9.6-hour playthrough |
 | Sekiro: Shadows Die Twice | `sekiro` | an 8-hour playthrough |
 
-Live capture has only been run against Elden Ring so far; the other four
-profiles were built and validated on recordings.
+Every profile was validated on a full-length recorded playthrough and has
+run live against the real game on Windows.
 
 Live capture is Windows only (the games are). Everything else — replaying a
 recording, the recap, search and the desktop window — also runs on Linux.
 
 ## Install (Windows)
 
-Download `PreviouslyOn-<version>-windows-x64-setup.exe` from the
-[releases](https://github.com/pedrocluis/previously-on/releases) and run it.
+Download `PreviouslyOn-<version>-windows-x64-setup.exe` from
+[previouslyon.gg/download](https://previouslyon.gg/download) (or the
+[releases](https://github.com/pedrocluis/previously-on/releases)) and run it.
 It installs for your user only (no administrator prompt) into
 `%LOCALAPPDATA%\Programs\PreviouslyOn`, adds a Start menu entry and, unless
 you untick it, starts in the tray when you sign in. Python, the OCR models
