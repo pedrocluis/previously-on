@@ -61,8 +61,10 @@ function renderWatch(s) {
   const btn = s.running
     ? `<button id="watch-btn" data-action="stop">Stop watching</button>`
     : `<button id="watch-btn" data-action="start" class="primary">Watch for ${esc(s.watching && s.watching !== 'a game' ? s.watching : 'games')}</button>`;
+  const sync = s.sync ? `<div class="sync-line" title="${esc(s.sync.last ? 'Last sync ' + s.sync.last.replace('T', ' ') : '')}">
+    <span class="label">Sync</span> ${esc(s.sync.state === 'syncing' ? 'Syncing…' : s.sync.message || 'On')}</div>` : '';
   watchBox.innerHTML = `<div class="state"><span class="dot ${esc(s.state)}"></span><span class="what">${esc(what)}</span></div>
-    <div class="detail">${esc(detail)}</div>${btn}`;
+    <div class="detail">${esc(detail)}</div>${btn}${sync}`;
   document.getElementById('watch-btn').onclick = async ev => {
     const r = await call(ev.target.dataset.action === 'stop' ? 'stop_watch' : 'start_watch');
     if (r.error) alert(r.error);
@@ -436,7 +438,7 @@ async function renderSettings(saved) {
       </div>
     </div>
     <div class="set">
-      <div class="about"><h3>Data</h3><p class="hint">Everything stays on this machine as plain text files.</p></div>
+      <div class="about"><h3>Data</h3><p class="hint">Everything stays on this machine as plain text files, unless you turn on sync for a game under Account.</p></div>
       <div>
         <div class="field"><label>Session logs and recaps</label><p class="hint"><code>${esc(s.data_dir)}</code></p>
           <div class="row" style="margin-top:10px"><button type="button" id="open-dir">Open folder</button></div></div>
@@ -444,7 +446,9 @@ async function renderSettings(saved) {
       </div>
     </div>
     <div class="save-bar"><button class="primary">Save</button><span id="saved" class="muted"></span></div>
-  </form>`;
+  </form>
+  <div class="set" id="account-set"></div>`;
+  renderAccount();
   document.getElementById('open-dir').onclick = () => call('open_data_dir');
   document.getElementById('settings').onsubmit = async e => {
     e.preventDefault();
@@ -464,6 +468,61 @@ async function renderSettings(saved) {
     await renderSettings(r);
     document.getElementById('saved').textContent = 'Saved.';
   };
+}
+
+// --- account (settings) ----------------------------------------------------------------
+
+let accountTimer = null;
+
+async function renderAccount() {
+  clearTimeout(accountTimer);
+  const box = document.getElementById('account-set');
+  if (!box) return;  // left the settings page
+  const a = await call('account_status');
+  if (a.error) { box.innerHTML = `<div class="about"><h3>Account</h3></div><div>${errorBox(a)}</div>`; return; }
+  if (!a.available) { box.remove(); return; }
+  const about = `<div class="about"><h3>Account</h3><p class="hint">Optional. Syncs each session's event log and recap for the games you pick, so you can read them on previouslyon.gg from any device, and a second PC or a reinstall keeps the playthrough. Frames, keys and settings never sync.</p></div>`;
+  let body;
+  const link = a.link || {};
+  if (!a.signed_in && link.state === 'waiting') {
+    body = `<div class="field"><label>Confirm this code in your browser</label>
+        <p class="code">${esc(link.user_code)}</p>
+        <p class="hint">The page opened at <code>previouslyon.gg/link</code>. Sign in there, check the code matches, and click <em>Link this app</em>.</p>
+        <div class="row" style="margin-top:10px"><button type="button" id="acct-open">Open the page again</button><button type="button" id="acct-cancel">Cancel</button></div></div>`;
+    accountTimer = setTimeout(renderAccount, 2000);
+  } else if (!a.signed_in) {
+    body = `${link.state === 'failed' ? `<p class="error">${esc(link.message)}</p>` : ''}
+      <div class="field"><p class="hint">Signing in opens previouslyon.gg in your browser, where you can use an emailed link or Discord.</p>
+        <div class="row" style="margin-top:10px"><button type="button" class="primary" id="acct-sign-in">Sign in</button></div></div>`;
+  } else {
+    const on = new Set(a.sync_games);
+    const sync = a.sync || {};
+    const syncLine = sync.state === 'syncing' ? 'Syncing…' : sync.message ? `${esc(sync.message)}${sync.last ? ` <span class="muted">(${esc(sync.last.replace('T', ' ').slice(0, 16))})</span>` : ''}` : '';
+    body = `<div class="field"><label>Signed in as ${esc(a.account || 'your account')}</label>
+        <p class="hint"><a href="#" id="acct-page">Open your account page</a></p></div>
+      <div class="field"><label>Sync these games</label>
+        ${a.games.map(g => `<label class="check"><input type="checkbox" data-sync="${esc(g.id)}" ${on.has(g.id) ? 'checked' : ''}>${esc(g.name)}</label>`).join('')}
+        ${sync.state === 'error' || sync.state === 'signed_out' ? `<p class="error">${syncLine}</p>` : syncLine ? `<p class="hint">${syncLine}</p>` : ''}
+        <div class="row" style="margin-top:10px"><button type="button" id="acct-sync" ${on.size ? '' : 'disabled'}>Sync now</button><button type="button" id="acct-sign-out">Sign out</button></div></div>`;
+    if (sync.state === 'syncing') accountTimer = setTimeout(renderAccount, 1500);
+  }
+  box.innerHTML = about + `<div>${body}</div>`;
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+  on('acct-sign-in', async () => { const r = await call('sign_in'); if (r.error) alert(r.error); renderAccount(); });
+  on('acct-cancel', async () => { await call('cancel_sign_in'); renderAccount(); });
+  on('acct-open', () => call('open_url', link.url));
+  on('acct-page', e => { e.preventDefault(); call('open_url', a.account_url); });
+  on('acct-sync', async () => { await call('sync_now'); setTimeout(renderAccount, 300); });
+  on('acct-sign-out', async () => {
+    if (!confirm('Sign this PC out? Its sessions stay here and on your account.')) return;
+    await call('sign_out');
+    renderAccount();
+  });
+  box.querySelectorAll('input[data-sync]').forEach(i => i.onchange = async () => {
+    const r = await call('set_sync_game', i.dataset.sync, i.checked);
+    if (r.error) alert(r.error);
+    setTimeout(renderAccount, 300);
+  });
 }
 
 // --- routing ------------------------------------------------------------------------

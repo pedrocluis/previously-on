@@ -28,11 +28,11 @@ the kill on the wrong boss in 5 of that game's 15 defeats.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from rapidfuzz import fuzz
 
-from .classify import normalize
+from .text import normalize
 from .events import Event, EventType
 
 UNKNOWN_BOSS = "unknown boss"
@@ -61,6 +61,13 @@ class SessionStats:
     areas: list[str] = field(default_factory=list)
     items: int = 0
     dialogue_lines: int = 0
+
+    def to_json(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_json(cls, d: dict) -> SessionStats:
+        return cls(**{**d, "bosses": [BossStat(**b) for b in d.get("bosses", [])]})
 
     @property
     def current_boss(self) -> BossStat | None:

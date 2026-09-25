@@ -19,7 +19,7 @@
 
 import sys
 
-from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules, copy_metadata
 
 ROOT = SPECPATH + "/.."
 
@@ -30,6 +30,8 @@ datas = [
 # RapidOCR loads config.yaml and the three ONNX models by path from its package.
 datas += collect_data_files("rapidocr_onnxruntime")
 binaries = collect_dynamic_libs("onnxruntime")
+# keyring finds its backends through its package metadata's entry points.
+datas += copy_metadata("keyring")
 
 hiddenimports = [
     # Profiles are imported by name from games/__init__; keep every one.
@@ -45,6 +47,8 @@ if sys.platform == "win32":
     hiddenimports += ["webview.platforms.winforms", "webview.platforms.edgechromium", "clr"]
     # pystray imports its platform backend by name at runtime.
     hiddenimports += ["pystray._win32"]
+    # The sign-in token goes to Windows Credential Manager (app/account.py).
+    hiddenimports += ["keyring.backends.Windows", "win32ctypes.core"]
 
 a = Analysis(
     [ROOT + "/packaging/app_entry.py", ROOT + "/packaging/cli_entry.py"],

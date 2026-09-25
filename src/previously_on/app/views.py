@@ -43,8 +43,7 @@ def _clock(t_rel: float) -> str:
     return f"{h}:{m:02d}:{s:02d}"
 
 
-def _boss(b) -> dict:
-    return {"name": b.name, "attempts": b.attempts, "defeated": b.defeated, "phases": list(b.phases)}
+_boss = card.boss_json
 
 
 def _state(record: RecapRecord | None) -> dict | None:
@@ -212,23 +211,7 @@ def timeline(game: str, data_dir: Path | None) -> list[dict]:
 
 
 def totals(game: str, data_dir: Path | None) -> dict:
-    """``112 hours · 847 deaths · Bayle took 34 tries`` — the whole playthrough
-    in one line, the share card's numbers (a fight that spans sessions counts
-    every try)."""
-    p = card.gather(game, data_dir)
-    felled = [_boss(b) for b in p.felled]
-    hardest = [_boss(b) for b in p.hardest(1)]
-    return {
-        "sessions": p.sessions,
-        "seconds": p.seconds,
-        "playtime": format_duration(p.seconds),
-        "deaths": p.deaths,
-        "bosses_felled": len(felled),
-        "hardest": hardest[0] if hardest else None,
-        "first": p.first.isoformat(timespec="seconds") if p.first else None,
-        "last": p.last.isoformat(timespec="seconds") if p.last else None,
-        "line": card.line(p),
-    }
+    return card.totals(card.gather(game, data_dir))
 
 
 def search(game: str, data_dir: Path | None, query: str, kinds: list[str] | None = None) -> list[dict]:
