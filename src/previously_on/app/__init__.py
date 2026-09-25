@@ -5,7 +5,8 @@ capture loop running in the same process, so a tester starts one thing.
 entry point for Windows, where stderr goes to ``<data dir>/app.log``.
 With a tray icon, closing the window hides it and capture goes on; a start
 at sign-in (``--background``) opens straight into the tray. One copy watches
-at a time: a second start shows the first one's window instead.
+at a time: a second start shows the first one's window instead, and
+``--quit`` closes it (the installer's way to free the files it replaces).
 """
 
 from __future__ import annotations
@@ -21,11 +22,12 @@ from ..session import default_data_dir
 from .api import Api
 from .autostart import BACKGROUND_FLAG, Autostart
 from .config import AppConfig, default_config_path
-from .instance import InstanceServer, signal_running
+from .instance import InstanceServer, signal_quit, signal_running
 from .watcher import Watcher
 
 WINDOW_TITLE = "Previously On"
 RECAP_GRACE = 180.0  # seconds to let a recap in flight finish after the window closes
+QUIT_FLAG = "--quit"
 
 
 def ui_path() -> Path:
@@ -148,6 +150,10 @@ def run_app(
         if window is not None:
             window.destroy()
 
+    def quit_requested() -> None:
+        print("asked to quit by another copy", file=sys.stderr)
+        quit_app()
+
     icon = None
     if tray:
         from .tray import start_tray
@@ -164,7 +170,7 @@ def run_app(
         # Hidden only when the tray can bring it back.
         hidden=background and icon is not None,
     )
-    server = InstanceServer(config_path.parent, show) if single else None
+    server = InstanceServer(config_path.parent, show, quit_requested) if single else None
 
     def closing() -> bool:
         if quitting.is_set() or _session_ending():
@@ -202,8 +208,14 @@ def run_app(
 
 def main() -> int:
     """``previously-on-app`` / ``PreviouslyOn.exe``: the GUI entry point. Its
-    one argument is ``--background``, the sign-in start (tray only). Always
-    logs to ``app.log`` — whether stderr is missing depends on how the
-    process was started, not on whether anyone sees it."""
+    one argument is ``--background``, the sign-in start (tray only), or
+    ``--quit``, which closes a running copy and exits 1 if it is still up
+    after the recap grace. Always logs to ``app.log`` — whether stderr is
+    missing depends on how the process was started, not on whether anyone
+    sees it."""
     _log_to_file(None)
+    if QUIT_FLAG in sys.argv[1:]:
+        closed = signal_quit(default_config_path().parent, RECAP_GRACE + 30)
+        print("quit: " + ("no copy running now" if closed else "the running copy did not exit"), file=sys.stderr)
+        return 0 if closed else 1
     return run_app(background=BACKGROUND_FLAG in sys.argv[1:])
