@@ -1,6 +1,6 @@
 [project]
 name = "previously-on"
-version = "0.1.0"
+version = "0.1.1"
 description = "Passive session memory for long single-player games: watch the screen, log what happened, tell you where you left off."
 requires-python = ">=3.12"
 license = "MIT"

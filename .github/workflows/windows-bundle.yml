@@ -20,6 +20,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The installer, its file names and the app's own version all come
+      # from __version__, not the tag; a tag the code doesn't carry would
+      # ship a release named after the previous version.
+      - name: The tag matches the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          $tag = "${{ github.ref_name }}".Substring(1)
+          $init = (Select-String -Path src/previously_on/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
+          $proj = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          if ($init -ne $tag -or $proj -ne $tag) {
+            Write-Error "tag v$tag, but __init__.py says $init and pyproject.toml says $proj: bump both before tagging"; exit 1
+          }
+
       - uses: astral-sh/setup-uv@v10.2.0  # no floating major tags since v8
         with:
           enable-cache: true
