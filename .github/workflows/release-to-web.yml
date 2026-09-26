@@ -1,10 +1,11 @@
 # Publishing a release (the tag workflow only drafts it) updates the website
-# (../previously-on-web): it redeploys the site now, so /download shows the
-# release, and opens a PR there that runs the API on the new tag and
+# (../previously-on-web): it redeploys staging now, so staging's /download
+# shows the release (production's on the next `promote` there), and opens a
+# PR there that runs the API on the new tag and
 # refreshes the download page's fallback. That PR is merged by hand: its CI
 # runs the web repo's parity and game-list tests against the new tag, and
-# merging it deploys staging, waits for approval, then production (and
-# recomputes stored stats). previously-on-web/docs/automation.md has the setup.
+# merging it deploys staging; production follows the web repo's `promote`
+# workflow (stored stats are recomputed on each). previously-on-web/docs/automation.md has the setup.
 #
 # WEB_REPO_TOKEN: a fine-grained PAT for pedrocluis/previously-on-web only,
 # Contents and Pull requests read & write. PRs opened with GITHUB_TOKEN would
@@ -31,7 +32,7 @@ jobs:
       - name: Check the tag
         run: '[[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not a release tag: $TAG" >&2; exit 1; }'
 
-      - name: Redeploy the site now
+      - name: Redeploy the site (staging; production on promote)
         env: { GH_TOKEN: "${{ secrets.WEB_REPO_TOKEN }}" }
         run: gh api "repos/$WEB/dispatches" -f event_type=app-released
 
@@ -67,4 +68,4 @@ jobs:
             - `api/previously-on.txt` now pins ${{ env.TAG }}.
             - `src/data/release-fallback.json` is the ${{ env.TAG }} release.
 
-            Merging deploys to staging, waits for approval, then deploys production and recomputes stored stats.
+            Merging deploys to staging; running `promote` then deploys production. Each recomputes stored stats.
