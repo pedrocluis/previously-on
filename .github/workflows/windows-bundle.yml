@@ -30,7 +30,7 @@ jobs:
           $init = (Select-String -Path src/previously_on/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
           $proj = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
           if ($init -ne $tag -or $proj -ne $tag) {
-            Write-Error "tag v$tag, but __init__.py says $init and pyproject.toml says $proj: bump both before tagging"; exit 1
+            Write-Error "tag v$tag, but __init__.py says $init and pyproject.toml says ${proj}: bump both before tagging"; exit 1
           }
 
       - uses: astral-sh/setup-uv@v10.2.0  # no floating major tags since v8
