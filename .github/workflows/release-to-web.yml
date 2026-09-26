@@ -1,0 +1,71 @@
+# Publishing a release (the tag workflow only drafts it) updates the website
+# (../previously-on-web): it redeploys staging now, so staging's /download
+# shows the release (production's on the next `promote` there), and opens a
+# PR there that runs the API on the new tag and
+# refreshes the download page's fallback. That PR is merged by hand: its CI
+# runs the web repo's parity and game-list tests against the new tag, and
+# merging it deploys staging; production follows the web repo's `promote`
+# workflow (stored stats are recomputed on each). previously-on-web/docs/automation.md has the setup.
+#
+# WEB_REPO_TOKEN: a fine-grained PAT for pedrocluis/previously-on-web only,
+# Contents and Pull requests read & write. PRs opened with GITHUB_TOKEN would
+# not start the web repo's CI.
+name: release to web
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag: { description: "Release tag, e.g. v0.1.2", required: true }
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      WEB: pedrocluis/previously-on-web
+    steps:
+      - name: Check the tag
+        run: '[[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not a release tag: $TAG" >&2; exit 1; }'
+
+      - name: Redeploy the site (staging; production on promote)
+        env: { GH_TOKEN: "${{ secrets.WEB_REPO_TOKEN }}" }
+        run: gh api "repos/$WEB/dispatches" -f event_type=app-released
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: pedrocluis/previously-on-web
+          token: ${{ secrets.WEB_REPO_TOKEN }}
+
+      - name: Pin the API to the release
+        run: sed -i -E "s#(pedrocluis/previously-on@)v[^[:space:]]+#\1${TAG}#" api/previously-on.txt
+
+      # The same shape as src/data/release.ts reads from the GitHub API.
+      - name: Refresh the site's fallback release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh api "repos/${{ github.repository }}/releases/tags/$TAG" | jq '
+            def a(s): (first(.assets[] | select(.name | endswith(s))
+              | {name, url: .browser_download_url, size,
+                 sha256: ((.digest // "") | ltrimstr("sha256:") | if . == "" then null else . end)}) // null);
+            { version: (.tag_name | ltrimstr("v")), tag: .tag_name, date: .published_at[0:10],
+              url: .html_url, body: "", installer: a("-setup.exe"), zip: a(".zip") }' \
+            > src/data/release-fallback.json
+
+      - uses: peter-evans/create-pull-request@v8.1.1
+        with:
+          token: ${{ secrets.WEB_REPO_TOKEN }}
+          branch: app-${{ env.TAG }}
+          commit-message: Run the API on previously-on ${{ env.TAG }}
+          title: Run the API on previously-on ${{ env.TAG }}
+          body: |
+            Opened by the app repo's release workflow for ${{ env.TAG }}.
+
+            - `api/previously-on.txt` now pins ${{ env.TAG }}.
+            - `src/data/release-fallback.json` is the ${{ env.TAG }} release.
+
+            Merging deploys to staging; running `promote` then deploys production. Each recomputes stored stats.
