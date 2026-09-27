@@ -92,7 +92,7 @@ def compute(events: list[Event], duration: float | None = None) -> SessionStats:
         match ev.type:
             case EventType.BOSS_ENGAGED:
                 known = current_name is not None and (
-                    _same_name(ev.text, current_name) or any(_same_name(ev.text, p) for p in phases)
+                    same_name(ev.text, current_name) or any(same_name(ev.text, p) for p in phases)
                 )
                 if current_name is not None and not known and moved_on:
                     stats.bosses.append(BossStat(current_name, deaths_since_defeat, False, phases))
@@ -119,7 +119,7 @@ def compute(events: list[Event], duration: float | None = None) -> SessionStats:
                     # first name goes in: every bar of the fight is still
                     # recorded, exactly once.
                     name = last_name
-                    others = [current_name] + [p for p in phases if not _same_name(p, last_name)]
+                    others = [current_name] + [p for p in phases if not same_name(p, last_name)]
                 stats.bosses.append(BossStat(name, deaths_since_defeat + 1, True, others))
                 current_name = None
                 last_name = None
@@ -142,8 +142,11 @@ def compute(events: list[Event], duration: float | None = None) -> SessionStats:
     return stats
 
 
-def _same_name(a: str, b: str) -> bool:
+def same_name(a: str, b: str) -> bool:
+    """True when two boss bar names are the same fight's, OCR noise aside.
+    The website uses it to tell which fights a visitor has reached."""
     return fuzz.ratio(normalize(a), normalize(b)) >= SAME_NAME
+
 
 
 def _related(a: str, b: str) -> bool:
@@ -155,7 +158,7 @@ def _related(a: str, b: str) -> bool:
     Golden Order" and "Elden Beast" share nothing, and neither do "Juzou
     the Drunkard" and "Lady Butterfly".
     """
-    if _same_name(a, b):
+    if same_name(a, b):
         return True
     return bool({w.lower() for w in _NAME_TOKEN.findall(a)} & {w.lower() for w in _NAME_TOKEN.findall(b)})
 
@@ -201,13 +204,13 @@ def across_sessions(fights: list[BossStat]) -> list[BossStat]:
             (
                 f
                 for f in out
-                if not f.defeated and any(_same_name(a, b) for a in (f.name, *f.phases) for b in names)
+                if not f.defeated and any(same_name(a, b) for a in (f.name, *f.phases) for b in names)
             ),
             None,
         )
         if prior is not None:
             out.remove(prior)
-            extra = [p for p in (prior.name, *prior.phases) if not any(_same_name(p, n) for n in names)]
+            extra = [p for p in (prior.name, *prior.phases) if not any(same_name(p, n) for n in names)]
             fight = BossStat(fight.name, prior.attempts + fight.attempts, fight.defeated, [*fight.phases, *extra])
         out.append(fight)
     return out

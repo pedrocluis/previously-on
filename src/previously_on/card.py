@@ -162,7 +162,10 @@ def date_span(first: datetime | None, last: datetime | None) -> str:
 
 
 def font_path() -> Path:
-    return Path(str(files("previously_on.app") / "ui" / "fonts" / "mona-sans-latin-wdth-normal.woff2"))
+    # A path under the package, not ``files("previously_on.app")``: that
+    # imports the window and the capture stack, which the website's server
+    # does not install.
+    return Path(str(files("previously_on") / "app" / "ui" / "fonts" / "mona-sans-latin-wdth-normal.woff2"))
 
 
 @lru_cache(maxsize=64)
