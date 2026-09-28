@@ -58,7 +58,8 @@ INK, RAIL, LINE, TEXT, DIM, FAINT, ACCENT, FELLED = (
     MOSS.ink, MOSS.rail, MOSS.line, MOSS.text, MOSS.dim, MOSS.faint, MOSS.accent, MOSS.felled
 )
 
-SITE = "github.com/pedrocluis/previously-on"
+SITE = "previouslyon.gg"  # where a stranger who sees the card lands
+HIDDEN_NAME = 300  # the width of a hidden boss name, the same for every name: its length says nothing
 
 
 @dataclass(slots=True)
@@ -240,9 +241,10 @@ def _mix(a: str, b: str, t: float) -> str:
     return "#" + "".join(f"{round(x * t + y * (1 - t)):02x}" for x, y in zip(ca, cb))
 
 
-def render(p: Playthrough, display_name: str, theme: str = DEFAULT_THEME):
+def render(p: Playthrough, display_name: str, theme: str = DEFAULT_THEME, names: bool = True):
     """The card as a 1600×900 RGB image (16:9 — what every feed and chat
-    previews without cropping)."""
+    previews without cropping). ``names=False`` is the website's spoiler
+    guard: each boss name becomes a blurred bar, the tries stay."""
     from PIL import Image, ImageDraw
 
     t = THEMES[theme]
@@ -292,11 +294,15 @@ def render(p: Playthrough, display_name: str, theme: str = DEFAULT_THEME):
 
     # The fights column.
     if listed:
-        _caps(draw, (split, body - 6), "Hardest fights" if hardest else "Latest felled", 20, t.faint)
+        heading = "Hardest fights" if hardest else "Latest felled"
+        _caps(draw, (split, body - 6), heading if names else f"{heading} · names hidden", 20, t.faint)
         y = body + 40
         for fight in listed:
-            name, font = _fit(draw, fight.name, right - split, 36, 26, 640)
-            draw.text((split, y + 36), name, font=font, fill=t.text, anchor="ls")
+            if names:
+                name, font = _fit(draw, fight.name, right - split, 36, 26, 640)
+                draw.text((split, y + 36), name, font=font, fill=t.text, anchor="ls")
+            else:
+                _hidden(img, (split, y + 10), min(HIDDEN_NAME, right - split), 26, t)
             said = tries(fight.attempts) if fight.attempts > 1 else "first try"
             draw.text((split, y + 74), said, font=_font(26, 560, 112), fill=t.felled, anchor="ls")
             y += 100
@@ -319,11 +325,24 @@ def render(p: Playthrough, display_name: str, theme: str = DEFAULT_THEME):
     return img
 
 
-def png(p: Playthrough, display_name: str, theme: str = DEFAULT_THEME) -> bytes:
+def _hidden(img, xy: tuple[float, float], width: float, height: float, t: Theme) -> None:
+    """A name under the spoiler guard, drawn the way the website blurs one:
+    a soft bar of the text colour, no letters under it."""
+    from PIL import Image, ImageDraw, ImageFilter
+
+    pad = 16
+    w, h = int(width) + 2 * pad, int(height) + 2 * pad
+    bar = Image.new("RGB", (w, h), t.ink)
+    ImageDraw.Draw(bar).rounded_rectangle([pad, pad, pad + width, pad + height], radius=height / 2, fill=_mix(t.text, t.ink, 0.42))
+    bar = bar.filter(ImageFilter.GaussianBlur(6))
+    img.paste(bar, (int(xy[0]) - pad, int(xy[1]) - pad))
+
+
+def png(p: Playthrough, display_name: str, theme: str = DEFAULT_THEME, names: bool = True) -> bytes:
     from io import BytesIO
 
     buf = BytesIO()
-    render(p, display_name, theme).save(buf, "PNG", optimize=True)
+    render(p, display_name, theme, names).save(buf, "PNG", optimize=True)
     return buf.getvalue()
 
 

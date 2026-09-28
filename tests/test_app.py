@@ -154,6 +154,14 @@ def test_timeline_groups_index_entries_per_session(tmp_path, eldenring):
     assert t[1]["moments"][1]["detail"] == "2 deaths, still standing"
 
 
+def test_sessions_are_numbered_as_episodes_oldest_first(tmp_path, eldenring):
+    a, b = playthrough(tmp_path, eldenring)
+    assert [r["episode"] for r in views.sessions(GAME, tmp_path)] == [2, 1]  # newest first
+    assert [r["episode"] for r in views.timeline(GAME, tmp_path)] == [1, 2]
+    assert views.session(GAME, tmp_path, a.stem)["episode"] == 1
+    assert views.home(GAME, tmp_path, now=datetime(2026, 10, 30))["episode"] == 2
+
+
 def test_totals_line(tmp_path, eldenring):
     assert views.totals(GAME, tmp_path)["line"] == ""
     playthrough(tmp_path, eldenring)
@@ -489,6 +497,22 @@ def test_card_themes(tmp_path, eldenring):
     assert card.render(p, "Elden Ring").tobytes() == drawn["moss"].tobytes()  # the default is the window's
     for name, img in drawn.items():
         assert img.getpixel((5, 5)) == tuple(int(card.THEMES[name].ink[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def test_card_without_names_shows_no_trace_of_them(tmp_path, eldenring):
+    """The website's spoiler guard: the same card with every boss renamed is
+    the same image, so nothing of a name (not even its length) is drawn."""
+    from dataclasses import replace
+
+    from previously_on import card
+
+    playthrough(tmp_path, eldenring)
+    p = card.gather(GAME, tmp_path)
+    renamed = replace(p, fights=[replace(f, name="Someone Else Entirely, the Longer") for f in p.fights])
+    assert card.render(p, "Elden Ring").tobytes() != card.render(renamed, "Elden Ring").tobytes()
+    assert card.render(p, "Elden Ring", names=False).tobytes() == card.render(renamed, "Elden Ring", names=False).tobytes()
+    assert card.png(p, "Elden Ring", names=False).startswith(b"\x89PNG")
+    assert card.SITE == "previouslyon.gg"
 
 
 def test_card_date_span():

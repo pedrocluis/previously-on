@@ -59,9 +59,12 @@ def _state(record: RecapRecord | None) -> dict | None:
     }
 
 
-def _session_row(log: Path, meta: SessionMeta, events: list[Event], stats: SessionStats, record) -> dict:
+def _session_row(log: Path, meta: SessionMeta, events: list[Event], stats: SessionStats, record, episode: int) -> dict:
+    """One session as every screen shows it. ``episode`` is its place in the
+    game's logs, oldest first from 1 — the website numbers them the same way."""
     return {
         "session": session_id(log),
+        "episode": episode,
         "started": meta.started.isoformat(timespec="seconds"),
         "ended": (meta.ended or meta.started).isoformat(timespec="seconds"),
         "date": f"{meta.started:%a %d %b %Y, %H:%M}",
@@ -114,7 +117,7 @@ def home(game: str, data_dir: Path | None, now: datetime | None = None) -> dict:
     stats = compute(events, duration=meta.duration)
     ended = meta.ended or meta.started
     record = _record_for(log)
-    out = _session_row(log, meta, events, stats, record)
+    out = _session_row(log, meta, events, stats, record, len(logs))
     out.update({"empty": False, "gap": describe_gap(ended, now), "needs_recap": record is None})
     if record is None:
         # No recap for the newest session (no key when it ended, or the app
@@ -140,10 +143,11 @@ def home(game: str, data_dir: Path | None, now: datetime | None = None) -> dict:
 def sessions(game: str, data_dir: Path | None) -> list[dict]:
     """Newest first."""
     rows = []
-    for log in reversed(list_logs(game, data_dir)):
+    logs = list_logs(game, data_dir)
+    for n, log in reversed(list(enumerate(logs, 1))):
         meta, events = read_session(log)
         stats = compute(events, duration=meta.duration)
-        rows.append(_session_row(log, meta, events, stats, _record_for(log)))
+        rows.append(_session_row(log, meta, events, stats, _record_for(log), n))
     return rows
 
 
@@ -154,7 +158,7 @@ def session(game: str, data_dir: Path | None, stamp: str) -> dict | None:
     meta, events = read_session(log)
     stats = compute(events, duration=meta.duration)
     record = _record_for(log)
-    out = _session_row(log, meta, events, stats, record)
+    out = _session_row(log, meta, events, stats, record, list_logs(game, data_dir).index(log) + 1)
     out["event_list"] = [
         {"index": i, "at": _clock(ev.t_rel), "t_rel": ev.t_rel, "type": ev.type.value, "text": ev.text, "conf": ev.conf}
         for i, ev in enumerate(events)
@@ -190,10 +194,10 @@ def timeline(game: str, data_dir: Path | None) -> list[dict]:
     for e in index_mod.build(game, data_dir).entries:
         by_session.setdefault(e.session, []).append(e)
     out = []
-    for log in list_logs(game, data_dir):
+    for n, log in enumerate(list_logs(game, data_dir), 1):
         meta, events = read_session(log)
         stats = compute(events, duration=meta.duration)
-        row = _session_row(log, meta, events, stats, _record_for(log))
+        row = _session_row(log, meta, events, stats, _record_for(log), n)
         entries = sorted(by_session.get(row["session"], []), key=lambda e: e.t_rel)
         moments = []
         item_counts: dict[str, int] = {}

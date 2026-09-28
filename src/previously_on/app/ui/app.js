@@ -24,7 +24,23 @@ async function call(name, ...args) {
     return {error: String(e && e.message || e)};
   }
 }
-function errorBox(r) { return `<p class="error">${esc(r.error)}</p>`; }
+function errorBox(r) { return `<p class="error" role="alert">${esc(r.error)}</p>`; }
+
+// A message right under the control it is about, as on the website: an
+// error is announced (role=alert) and says so in words; "Saved." is quiet.
+function note(after, kind, text) {
+  let el = after.nextElementSibling;
+  if (!(el && el.dataset && el.dataset.note)) {
+    el = document.createElement('p');
+    after.after(el);
+  }
+  el.dataset.note = kind;
+  el.className = `note ${kind}`;
+  el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  const t = String(text || '').trim();  // the API's messages start lowercase
+  el.textContent = t && t[0].toUpperCase() + t.slice(1) + (/[.!?…]$/.test(t) ? '' : '.');
+}
+function showError(after, message) { note(after, 'error', message); }
 
 // --- small pieces ---------------------------------------------------------------
 
@@ -56,6 +72,8 @@ function stateLabel(s) {
   }
 }
 
+let watchError = '';  // the last start/stop failure; the box is redrawn on every poll
+
 function renderWatch(s) {
   const [what, detail] = stateLabel(s);
   const btn = s.running
@@ -64,10 +82,10 @@ function renderWatch(s) {
   const sync = s.sync ? `<div class="sync-line" title="${esc(s.sync.last ? 'Last sync ' + s.sync.last.replace('T', ' ') : '')}">
     <span class="label">Sync</span> ${esc(s.sync.state === 'syncing' ? 'Syncing…' : s.sync.message || 'On')}</div>` : '';
   watchBox.innerHTML = `<div class="state"><span class="dot ${esc(s.state)}"></span><span class="what">${esc(what)}</span></div>
-    <div class="detail">${esc(detail)}</div>${btn}${sync}`;
+    <div class="detail">${esc(detail)}</div>${btn}${watchError ? `<p class="note error" role="alert">${esc(watchError[0].toUpperCase() + watchError.slice(1))}</p>` : ''}${sync}`;
   document.getElementById('watch-btn').onclick = async ev => {
     const r = await call(ev.target.dataset.action === 'stop' ? 'stop_watch' : 'start_watch');
-    if (r.error) alert(r.error);
+    watchError = r.error || '';
     poll();
   };
 }
@@ -116,7 +134,7 @@ async function renderGames() {
 
 gameSelect.onchange = async () => {
   const r = await call('select_game', gameSelect.value);
-  if (r.error) { alert(r.error); return; }
+  if (r.error) { showError(gameSelect.closest('label'), r.error); return; }
   viewGame = r.current;
   // A session page belongs to the game it came from.
   if (location.hash.startsWith('#session/')) location.hash = '#sessions';
@@ -161,7 +179,7 @@ function renderFirstRun(f) {
   const box = document.getElementById('fr-autostart');
   if (box) box.onchange = async () => {
     const r = await call('save_settings', {start_at_login: box.checked});
-    if (r.error) { alert(r.error); box.checked = !box.checked; }
+    if (r.error) { box.checked = !box.checked; showError(box.closest('label'), r.error); }
   };
 }
 
@@ -212,7 +230,7 @@ async function renderHome() {
       (h.state_from && h.state_from !== h.session ? `<p class="hint">As of session ${esc(h.state_from)}, the newest one with a recap.</p>` : '') +
       `</aside>`;
   }
-  main.innerHTML = `<p class="eyebrow">Last played ${esc(h.gap)}${sep()}${esc(h.date)}${sep()}${esc(h.duration)}${sep()}<a href="#session/${esc(h.session)}">session</a></p>
+  main.innerHTML = `<p class="eyebrow">Last played ${esc(h.gap)}${sep()}${esc(h.date)}${sep()}${esc(h.duration)}${sep()}<a href="#session/${esc(h.session)}">episode ${h.episode}</a></p>
     <h1><span class="pre">Previously on</span>${gameTitle(h.game, '…')}</h1>
     <hr class="rule">
     <div class="page-grid"><div>${recap}${notice}</div>${margin}</div>
@@ -223,7 +241,7 @@ async function renderHome() {
   if (btn) btn.onclick = async () => {
     btn.disabled = true; btn.textContent = 'Writing the recap…';
     const r = await call('summarize', h.session);
-    if (r.error) { alert(r.error); renderHome(); }
+    if (r.error) { btn.disabled = false; btn.textContent = 'Write it now'; showError(btn.closest('.row'), r.error); }
   };
   renderFeed();
 }
@@ -266,7 +284,7 @@ async function renderSessions() {
     <ul class="ledger sessions">` + r.sessions.map(s => {
       const [day, time] = splitDate(s.date);
       return `<li><a href="#session/${esc(s.session)}">
-        <span class="when"><span class="day">${esc(day)}</span><span class="time">${esc(time)}</span></span>
+        <span class="when"><span class="ep">Episode ${s.episode}</span><span class="day">${esc(day)}</span><span class="time">${esc(time)}</span></span>
         <span><span class="line">${esc(s.one_line)}</span>${s.summary ? `<span class="gist">${esc(s.summary)}</span>` : ''}</span>
         <span>${s.has_recap ? '' : '<span class="tag warn">no recap</span>'}</span>
       </a></li>`;
@@ -283,7 +301,7 @@ async function renderSession(stamp) {
     const where = [c.location, c.at].filter(Boolean).map(esc).join(' · ');
     return `<li><span class="who ${esc(c.basis)}">${who}</span>${where ? `<span class="where">${where}</span>` : ''}<div class="gist">${esc(c.gist)}</div></li>`;
   }).join('');
-  main.innerHTML = `<p class="eyebrow"><a href="#sessions">Sessions</a>${sep()}${esc(time)}${sep()}${plural(s.events, 'event')}</p>
+  main.innerHTML = `<p class="eyebrow"><a href="#sessions">Sessions</a>${sep()}Episode ${s.episode}${sep()}${esc(time)}${sep()}${plural(s.events, 'event')}</p>
     <h1 class="small">${esc(day)} <span class="muted">${esc(year)}</span></h1>
     <p class="totals-sub">${esc(s.one_line)}</p>
     <hr class="rule">
@@ -338,7 +356,7 @@ async function renderTimeline() {
     r.sessions.map(s => {
       const [day, time] = splitDate(s.date);
       return `<div class="entry">
-        <div class="when"><a href="#session/${esc(s.session)}">${esc(day)}</a><span>${esc(s.duration)} · ${plural(s.deaths, 'death')}</span><span>${esc(time)}</span></div>
+        <div class="when"><span class="ep">Episode ${s.episode}</span><a href="#session/${esc(s.session)}">${esc(day)}</a><span>${esc(s.duration)} · ${plural(s.deaths, 'death')}</span><span>${esc(time)}</span></div>
         <div>
           ${s.summary ? `<p class="gist">${esc(s.summary)}</p>` : ''}
           <ul class="moments">${s.moments.map(m => `<li class="${esc(m.kind)}"><span class="t">${esc(m.at)}</span><span><span class="name">${esc(m.name)}</span>${m.detail ? `<span class="detail ${m.detail.startsWith('felled') ? 'felled' : ''}">${esc(m.detail)}</span>` : ''}</span></li>`).join('')}</ul>
@@ -468,7 +486,7 @@ async function renderSettings(saved) {
     };
     if (v('start_at_login')) changes.start_at_login = v('start_at_login').checked;
     const r = await call('save_settings', changes);
-    if (r.error) { document.getElementById('saved').innerHTML = `<span class="error">${esc(r.error)}</span>`; return; }
+    if (r.error) { document.getElementById('saved').innerHTML = `<span class="error" role="alert">${esc(r.error)}</span>`; return; }
     await renderSettings(r);
     document.getElementById('saved').textContent = 'Saved.';
   };
@@ -525,7 +543,11 @@ async function renderAccount() {
   }
   box.innerHTML = about + `<div>${body}</div>`;
   const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-  on('acct-sign-in', async () => { const r = await call('sign_in'); if (r.error) alert(r.error); renderAccount(); });
+  on('acct-sign-in', async ev => {
+    const r = await call('sign_in');
+    if (r.error) showError(ev.target.closest('.row'), r.error);
+    else renderAccount();
+  });
   on('acct-cancel', async () => { await call('cancel_sign_in'); renderAccount(); });
   on('acct-open', () => call('open_url', link.url));
   on('acct-page', e => { e.preventDefault(); call('open_url', a.account_url); });
@@ -537,7 +559,7 @@ async function renderAccount() {
   });
   box.querySelectorAll('input[data-sync]').forEach(i => i.onchange = async () => {
     const r = await call('set_sync_game', i.dataset.sync, i.checked);
-    if (r.error) alert(r.error);
+    if (r.error) { i.checked = !i.checked; showError(i.closest('label'), r.error); return; }
     setTimeout(renderAccount, 300);
   });
 }
