@@ -1,0 +1,296 @@
+# The Witcher 3: Wild Hunt regression frames. See README.md for where each
+# came from. `t` is the second in the source recording, for re-cutting.
+
+# -- quests (header over the quest name, left notice slot) -------------------
+- file: quest_new_kaermorhen.jpg
+  t: 343             # with the glossary line "YENNEFER OF VENGERBERG" under it
+  expected:
+    - {type: quest_started, text: Kaer Morhen}
+- file: quest_updated_kaermorhen.jpg
+  t: 391
+  expected:
+    - {type: quest_updated, text: Kaer Morhen}
+- file: quest_new_lilac.jpg
+  t: 1269            # "GHOULS" / "VESEMIR" glossary lines under it
+  expected:
+    - {type: quest_started, text: Lilac and Gooseberries}
+- file: quest_updated_lilac.jpg
+  t: 1539
+  expected:
+    - {type: quest_updated, text: Lilac and Gooseberries}
+- file: quest_new_contract.jpg
+  t: 2481.5          # "UNDISCOVERED LOCATION" and "Track Quest" under it
+  expected:
+    - {type: quest_started, text: "Contract: Devil by the Well"}
+- file: quest_new_mia.jpg
+  t: 2486
+  expected:
+    - {type: quest_started, text: Missing in Action}
+- file: quest_new_twisted.jpg
+  t: 2591
+  expected:
+    - {type: quest_started, text: Twisted Firestarter}
+- file: quest_updated_twisted.jpg
+  t: 2601
+  expected:
+    - {type: quest_updated, text: Twisted Firestarter}
+    - {type: dialogue}
+- file: quest_completed_twisted.jpg
+  t: 2828
+  expected:
+    - {type: quest_completed, text: Twisted Firestarter}
+- file: quest_new_fryingpan.jpg
+  t: 2993
+  expected:
+    - {type: quest_started, text: "A Frying Pan, Spick and Span"}
+- file: quest_completed_fryingpan.jpg
+  t: 3121            # rewards listed under the name, outside the crop
+  expected:
+    - {type: quest_completed, text: "A Frying Pan, Spick and Span"}
+- file: quest_updated_cargo.jpg
+  t: 3445
+  expected:
+    - {type: quest_updated, text: Precious Cargo}
+    - {type: dialogue}
+
+# -- items (NEW ITEM RECEIVED / NEW CRAFTING DIAGRAM / NEW ALCHEMY FORMULA) -
+- file: item_gwent_guide.jpg
+  t: 2224            # read glued on the stored JPEG: text not checked
+  expected:
+    - {type: item_acquired}
+    - {type: dialogue}
+- file: item_card_zoltan.jpg
+  t: 2226            # a Gwent card named after a character
+  expected:
+    - {type: item_acquired, text: Zoltan Chivay}
+    - {type: dialogue}
+- file: item_lemon.jpg
+  t: 2269
+  expected:
+    - {type: item_acquired, text: Nilfgaardian Lemon}
+    - {type: dialogue}
+- file: item_diagram.jpg
+  t: 3021            # "DIAGRAM:BLUNTCROSSBOWBOLT", glued
+  expected:
+    - {type: item_acquired}
+- file: item_formula.jpg
+  t: 3023            # the field line beside it reads "Gerali ces still legible.", no colon
+  expected:
+    - {type: item_acquired}
+
+# -- areas (bottom right, right-aligned caps) -------------------------------
+- file: area_temeria.jpg
+  t: 1029            # cutscene title card, "MAY, 1272" under it
+  expected:
+    - {type: area_discovered, text: "Temeria, Road to Vizima"}
+- file: area_white_orchard.jpg
+  t: 1570
+  expected:
+    - {type: area_discovered, text: White Orchard}
+    - {type: dialogue}
+
+# -- dialogue --------------------------------------------------------------
+- file: dialogue_field_yennefer.jpg
+  t: 398
+  expected:
+    - {type: dialogue, text: "Yennefer: Geralt, stop fingering my toiletries."}
+- file: dialogue_field_yennefer2.jpg
+  t: 383
+  expected:
+    - {type: dialogue}
+- file: dialogue_field_geralt.jpg
+  t: 1361
+  expected:
+    - {type: dialogue}
+- file: dialogue_field_vesemir.jpg
+  t: 1575            # the tutorial panel's shadow eats "Vesemir: We need"; a field
+  expected: []       # line without its speaker is not taken (UI text has none)
+- file: dialogue_cutscene_two_rows.jpg
+  t: 1200
+  expected:
+    - {type: dialogue}
+- file: dialogue_cutscene_short.jpg
+  t: 1500            # the dialogue choices on the right are not logged
+  expected:
+    - {type: dialogue, text: "You seek someone?"}
+- file: dialogue_cutscene_long.jpg
+  t: 2742            # x 0.096-0.905, the widest line of the hour
+  expected:
+    - {type: dialogue}
+- file: dialogue_cutscene_inn.jpg
+  t: 1509
+  expected:
+    - {type: dialogue}
+- file: dialogue_cutscene_note.jpg
+  t: 1215            # Geralt reading a note aloud, in quotes
+  expected:
+    - {type: dialogue}
+
+# -- frames with nothing to log beside their subtitle -----------------------
+- file: neg_new_marker.jpg
+  t: 1365            # NEW MARKER / RANSACKED VILLAGE: a map marker, x 0.031
+  expected:
+    - {type: dialogue}
+- file: neg_received_xp.jpg
+  t: 2415            # RECEIVED: / EXPERIENCE POINTS: 25
+  expected:
+    - {type: dialogue}
+- file: neg_tutorial_village.jpg
+  t: 1573            # tutorial card over the slot; Vesemir's line, prefix in shadow
+  expected: []
+
+# -- negatives ---------------------------------------------------------------
+- file: neg_main_menu.jpg
+  t: 1
+  expected: []
+- file: neg_tutorial_welcome.jpg
+  t: 345
+  expected: []
+- file: neg_tutorial_adrenaline.jpg
+  t: 1293            # tutorial panel over a quest notice; the quick slots
+  expected: []
+- file: neg_tutorial_quest_updates.jpg
+  t: 2480            # titled "QUEST UPDATES", 92 against the header
+  expected: []
+- file: neg_tutorial_place.jpg
+  t: 2484            # a quest name bleeding through the panel, no header
+  expected: []
+- file: neg_tutorial_objective.jpg
+  t: 3357            # "ACTIVE OBJECTIVE" over "PRECIOUS CARGO"
+  expected: []
+- file: neg_some_time_later.jpg
+  t: 1380            # cutscene card where a region name goes
+  expected: []
+- file: neg_bestiary.jpg
+  t: 3147            # BESTIARY ENTRY ADDED / WOLVES, x 0.031
+  expected: []
+- file: neg_crowns.jpg
+  t: 2794            # NEW ITEM RECEIVED / CROWNS X 20: money is not an item
+  expected: []
+- file: neg_gwent.jpg
+  t: 2069            # a card's description centred in the subtitle band
+  expected: []
+- file: neg_map_legend.jpg
+  t: 2469
+  expected: []
+- file: neg_npc_chatter.jpg
+  t: 2439            # a passer-by's floating "You're dead!"
+  expected: []
+- file: neg_menu_quests.jpg
+  t: 3415            # the quest journal: quest names in Title Case
+  expected: []
+- file: neg_menu_skills.jpg
+  t: 3434
+  expected: []
+- file: neg_quest_dissolving.jpg
+  t: 2604.25         # QUEST UPDATED! whole, the name dissolving: "TWISTEDFI"
+  expected: []
+- file: neg_new_ability.jpg
+  t: 3370            # "…new Ability." hint over the header's place
+  expected: []
+
+# -- chunk 01 (t = 3600 + the chunk's second) --------------------------------
+- file: quest_completed_cargo.jpg
+  t: 3635            # a floating "Merchant" tag on the header's row
+  expected:
+    - {type: quest_completed, text: Precious Cargo}
+- file: quest_new_beast.jpg
+  t: 3988
+  expected:
+    - {type: quest_started, text: The Beast of White Orchard}
+- file: quest_new_scavenger.jpg
+  t: 4371            # a tooltip line crosses the header's row
+  expected:
+    - {type: quest_started, text: "Scavenger Hunt: Viper School Gear"}
+- file: item_formula_rebis.jpg
+  t: 4972
+  expected:
+    - {type: item_acquired, text: "Formula: Rebis"}
+- file: area_garrison.jpg
+  t: 3663.5
+  expected:
+    - {type: area_discovered, text: Nilfgaardian Garrison}
+- file: area_cemetery.jpg
+  t: 4297
+  expected:
+    - {type: area_discovered, text: White Orchard Cemetery}
+- file: neg_level_up.jpg
+  t: 4650            # LEVEL: 2 / POINTS AVAILABLE: 3 in the header column
+  expected:
+    - {type: dialogue}
+- file: neg_marker_place_of_power.jpg
+  t: 4303            # NEW MARKER / PLACE OF POWER, and Geralt's remark on it
+  expected:
+    - {type: dialogue}
+- file: neg_quest_slide_in.jpg
+  t: 4454            # the notice sliding in; see test_notice_sliding_in
+  expected: []
+
+# -- chunk 02 (t = 7200 + the chunk's second) --------------------------------
+- file: boss_griffin.jpg
+  t: 8300            # the Royal Griffin, silver bar half full, daylight
+  expected:
+    - {type: boss_engaged, text: Royal Griffin}
+- file: boss_griffin_low.jpg
+  t: 8360            # the bar's fill nearly gone
+  expected:
+    - {type: boss_engaged, text: Royal Griffin}
+- file: dialogue_field_chamberlain.jpg
+  t: 9640            # a speaker whose name is a possessive
+  expected:
+    - {type: dialogue, text: "Emhyr's Chamberlain: I see the gentleman is in the mood for jests. I fear the emperor might not share his disposition."}
+
+# -- deaths (second sources; `t` is the second in that clip) ----------------
+- file: death_01.jpg
+  t: 4.0             # 3F0IjSYgrXI, 720p, the menu still fading in
+  expected:
+    - {type: death, text: YOU ARE DEAD}
+- file: death_02.jpg
+  t: 4.5             # 3F0IjSYgrXI
+  expected:
+    - {type: death, text: YOU ARE DEAD}
+- file: death_03.jpg
+  t: 10.0            # rPjCVfxJ6ps, 1080p
+  expected:
+    - {type: death, text: YOU ARE DEAD}
+- file: death_04.jpg
+  t: 9.0             # rPjCVfxJ6ps
+  expected:
+    - {type: death, text: YOU ARE DEAD}
+- file: neg_combat_log_death.jpg
+  t: 11.5            # vPf3xjhzjSg: "Geralt has died." in a combat log, before the screen
+  expected: []
+
+# -- game UI drawn in the subtitle bands (found reading chunks 00-02) -------
+- file: neg_gwent_tutorial.jpg
+  t: 2066            # field band, no speaker: "To begin, you draw 10 cards ."
+  expected: []
+- file: neg_gwent_card.jpg
+  t: 2076            # "BitingFrost Sets the strength of … to1forboth players."
+  expected: []
+- file: neg_map_tooltip_position.jpg
+  t: 3412            # world map pin: "PLAYER'SCURRENTPOSITION The witcher's…"
+  expected: []
+- file: dialogue_field_geralt_dot.jpg
+  t: 1348            # the speaker's colon sometimes reads as a full stop
+  expected:
+    - {type: dialogue}
+- file: neg_map_tooltip_quest.jpg
+  t: 5599            # chunk 01 t 1999
+  expected: []
+- file: item_diagram_poniard.jpg
+  t: 5706            # chunk 01 t 2106, looting; the notice over the loot window
+  expected:
+    - {type: item_acquired, text: "Diagram: Temerian Poniard"}
+- file: neg_sign_tooltip.jpg
+  t: 5764            # chunk 01 t 2164: "Influences opponents' minds." in the field band
+  expected: []
+- file: neg_loading_tip.jpg
+  t: 5991            # chunk 01 t 2391, loading screen: a tip, in the field band
+  expected: []
+- file: neg_map_tooltip_sawmill.jpg
+  t: 5988            # chunk 01 t 2388
+  expected: []
+- file: neg_map_tooltip_ingredient.jpg
+  t: 4177            # chunk 01 t 577
+  expected: []

@@ -17,7 +17,7 @@ from ..session import read_session
 from ..stats import compute
 from .store import list_records, read_record, sessions_dir
 
-Kind = str  # item | area | checkpoint | boss | npc
+Kind = str  # item | area | checkpoint | boss | quest | npc
 
 MATCH = 82.0  # "Renala" still finds Rennala (83); "golden seed" no longer finds Golden Centipede (80)
 
@@ -38,7 +38,9 @@ class Index:
     entries: list[Entry] = field(default_factory=list)
 
 
-def _entries_from_events(sid: str, started: datetime, events: list[Event], duration: float) -> list[Entry]:
+def _entries_from_events(
+    sid: str, started: datetime, events: list[Event], duration: float, closes_fights: bool = True
+) -> list[Entry]:
     out: list[Entry] = []
     location: str | None = None
     first_bar: dict[str, Event] = {}
@@ -53,7 +55,13 @@ def _entries_from_events(sid: str, started: datetime, events: list[Event], durat
                 out.append(Entry("item", ev.text, sid, started, ev.t_rel, location))
             case EventType.BOSS_ENGAGED:
                 first_bar.setdefault(normalize(ev.text), ev)
-    for boss in compute(events, duration=duration).bosses:
+            # Updates are left out: a long quest updates a dozen times, and
+            # "where did I get that quest" is answered by its start.
+            case EventType.QUEST_STARTED:
+                out.append(Entry("quest", ev.text, sid, started, ev.t_rel, location, "started"))
+            case EventType.QUEST_COMPLETED:
+                out.append(Entry("quest", ev.text, sid, started, ev.t_rel, location, "completed"))
+    for boss in compute(events, duration=duration, closes_fights=closes_fights).bosses:
         bar = first_bar.get(normalize(boss.name))
         t_rel = bar.t_rel if bar else 0.0
         where = None
@@ -62,6 +70,8 @@ def _entries_from_events(sid: str, started: datetime, events: list[Event], durat
             where = before[-1] if before else None
         if boss.defeated:
             detail = f"felled in {boss.attempts} {'try' if boss.attempts == 1 else 'tries'}"
+        elif not boss.closed:
+            detail = "fought"  # the game shows no defeat, so no outcome
         else:
             detail = f"{boss.attempts} death{'s' if boss.attempts != 1 else ''}, still standing"
         out.append(Entry("boss", boss.name, sid, started, t_rel, where, detail))
@@ -78,7 +88,7 @@ def build(game: str, data_dir: Path | None = None) -> Index:
         sid = path.name.removesuffix(".jsonl")
         meta, events = read_session(path)
         logs[sid] = (meta.started, events)
-        index.entries.extend(_entries_from_events(sid, meta.started, events, meta.duration))
+        index.entries.extend(_entries_from_events(sid, meta.started, events, meta.duration, meta.closes_fights))
     for path in list_records(game, data_dir):
         record = read_record(path)
         started, events = logs.get(record.session, (datetime.min, []))

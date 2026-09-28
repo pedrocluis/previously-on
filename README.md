@@ -16,9 +16,14 @@ Supported games (PC, 16:9, English UI):
 | Dark Souls II: Scholar of the First Sin | `ds2` | an 8.6-hour playthrough |
 | Dark Souls III | `ds3` | a 9.6-hour playthrough |
 | Sekiro: Shadows Die Twice | `sekiro` | an 8-hour playthrough |
+| The Witcher 3: Wild Hunt | `witcher3` | the first 3 hours of a playthrough (not yet live) |
 
-Every profile was validated on a full-length recorded playthrough and has
-run live against the real game on Windows.
+The five FromSoftware profiles were validated on a full-length recorded
+playthrough and have run live against the real game on Windows. The Witcher 3
+is new: validated on three hours of a recorded playthrough, not yet tried
+against the running game. It logs quests (started, updated, completed) as
+well as areas, items, bosses, deaths and dialogue; the game never announces a
+boss's defeat, so a Witcher fight is "fought", never "felled".
 
 Live capture is Windows only (the games are). Everything else — replaying a
 recording, the recap, search and the desktop window — also runs on Linux.
@@ -190,8 +195,8 @@ Every rule in a profile was measured on real frames, labelled in
 `tests/fixtures/<game>/labels.yaml` with the source video and timestamp.
 The frames themselves are cut from other people's recordings and are **not
 in this repository**; what OCR read from each one, and the answers of the
-pixel checks, are (`reads.json`), so the whole regression set — about 380
-frames over five games — runs anywhere, in CI included. The few tests that
+pixel checks, are (`reads.json`), so the whole regression set — about 430
+frames over six games — runs anywhere, in CI included. The few tests that
 need an actual JPEG skip without it.
 
 ## Contributing and adding a game
@@ -208,8 +213,9 @@ is invented.
 Previously On only captures the screen, the way a recording tool does; it
 never reads or modifies game memory or files. It has been used alongside
 Elden Ring's Easy Anti-Cheat without issue, but that is not a guarantee —
-use it at your own risk. Not affiliated with or endorsed by FromSoftware or
-Bandai Namco; game names are used only to say what is supported.
+use it at your own risk. Not affiliated with or endorsed by FromSoftware,
+Bandai Namco or CD PROJEKT RED; game names are used only to say what is
+supported.
 
 ## License
 

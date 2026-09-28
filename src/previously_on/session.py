@@ -39,6 +39,10 @@ class SessionMeta:
     started: datetime
     ended: datetime | None = None
     played: float | None = None  # seconds of game time covered (video position for replays)
+    # False for a game that never announces a boss's defeat (the profile's
+    # ``closes_fights``): a fight in its log has no known outcome. Written to
+    # the log so that whoever reads it — the window, the website — knows.
+    closes_fights: bool = True
 
     @property
     def duration(self) -> float:
@@ -56,22 +60,30 @@ class SessionLog:
         self.count = 0
 
     @classmethod
-    def open(cls, game: str, source: str, data_dir: Path | None = None, started: datetime | None = None) -> SessionLog:
+    def open(
+        cls,
+        game: str,
+        source: str,
+        data_dir: Path | None = None,
+        started: datetime | None = None,
+        closes_fights: bool = True,
+    ) -> SessionLog:
         started = started or datetime.now()
         directory = (data_dir or default_data_dir()) / "sessions" / game
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{started:%Y%m%d-%H%M%S}.jsonl"
         fh = path.open("a", encoding="utf-8")
-        meta = SessionMeta(game=game, source=source, started=started)
+        meta = SessionMeta(game=game, source=source, started=started, closes_fights=closes_fights)
         log = cls(path, fh, meta)
-        log._write(
-            {
-                "kind": "session_start",
-                "game": game,
-                "source": source,
-                "started": started.isoformat(timespec="milliseconds"),
-            }
-        )
+        start = {
+            "kind": "session_start",
+            "game": game,
+            "source": source,
+            "started": started.isoformat(timespec="milliseconds"),
+        }
+        if not closes_fights:  # only then, so every other game's log reads as before
+            start["closes_fights"] = False
+        log._write(start)
         return log
 
     def _write(self, obj: dict) -> None:
@@ -132,7 +144,10 @@ def read_session(path: str | Path) -> tuple[SessionMeta, list[Event]]:
             kind = obj.get("kind")
             if kind == "session_start":
                 meta = SessionMeta(
-                    game=obj["game"], source=obj.get("source", ""), started=datetime.fromisoformat(obj["started"])
+                    game=obj["game"],
+                    source=obj.get("source", ""),
+                    started=datetime.fromisoformat(obj["started"]),
+                    closes_fights=bool(obj.get("closes_fights", True)),
                 )
             elif kind == "session_end" and meta is not None:
                 meta.ended = datetime.fromisoformat(obj["ended"])

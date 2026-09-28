@@ -128,7 +128,7 @@ def test_sessions_and_session_detail(tmp_path, eldenring):
     assert [r["session"] for r in rows] == [b.stem, a.stem]  # newest first
     assert rows[1]["has_recap"] and rows[1]["summary"] == "Miriel welcomed you; the Red Wolf fell."
     assert not rows[0]["has_recap"] and rows[0]["summary"] is None
-    assert rows[1]["bosses"] == [{"name": "Red Wolf of Radagon", "attempts": 2, "defeated": True, "phases": []}]
+    assert rows[1]["bosses"] == [{"name": "Red Wolf of Radagon", "attempts": 2, "defeated": True, "closed": True, "phases": []}]
     assert rows[1]["areas"] == ["Liurnia of the Lakes"] and rows[1]["items"] == 3 and rows[1]["checkpoints"] == 1
 
     d = views.session(GAME, tmp_path, a.stem)

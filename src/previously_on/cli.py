@@ -161,7 +161,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     source = open_source(
         args.source, args.path, fps=args.fps, monitor=args.monitor, seek=args.start, duration=args.duration
     )
-    log = SessionLog.open(profile.id, source.name, data_dir=args.out)
+    log = SessionLog.open(
+        profile.id, source.name, data_dir=args.out, closes_fights=getattr(profile, "closes_fights", True)
+    )
     print(f"session log: {log.path}", file=sys.stderr)
     if live:
         print(f"capturing monitor {args.monitor} via {source.name}: {source.width}x{source.height}", file=sys.stderr)
@@ -295,14 +297,21 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
     for path in args.session:
         meta, events = read_session(path)
-        stats = compute(events, duration=meta.duration)
+        stats = compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
         print(f"{path}  [{meta.game}, {meta.started:%Y-%m-%d %H:%M}]")
         print(f"  {summary_line(stats)}")
         for boss in stats.bosses:
-            status = f"felled in {boss.attempts}" if boss.defeated else f"{boss.attempts} deaths, still standing"
+            if boss.defeated:
+                status = f"felled in {boss.attempts}"
+            elif not boss.closed:
+                status = f"{boss.attempts} deaths, outcome not shown by the game"
+            else:
+                status = f"{boss.attempts} deaths, still standing"
             print(f"    boss  {boss.name}: {status}")
         if stats.areas:
             print(f"    areas {', '.join(stats.areas)}")
+        if stats.quests_completed:
+            print(f"    quests completed {', '.join(stats.quests_completed)}")
         print(
             f"    {stats.checkpoints} checkpoints · {stats.items} items · {stats.dialogue_lines} dialogue lines"
             f" · {len(events)} events"

@@ -198,7 +198,9 @@ class Watcher:
         if self.wait_for_game and self.low_priority:
             lower_priority()
         source = self.source_factory()
-        log = SessionLog.open(profile.id, source.name, data_dir=self.data_dir)
+        log = SessionLog.open(
+            profile.id, source.name, data_dir=self.data_dir, closes_fights=getattr(profile, "closes_fights", True)
+        )
         print(f"session log: {log.path}", file=sys.stderr)
         self.recent.clear()
         self._set(

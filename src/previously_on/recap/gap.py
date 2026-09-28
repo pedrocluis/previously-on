@@ -47,7 +47,7 @@ def render(record: RecapRecord, session_path: Path, tier: Tier, now: datetime | 
     """The text for the resume screen. ``session_path`` is the log the record
     was made from; the one-line tier is pure stats and never LLM prose."""
     meta, events = read_session(session_path)
-    stats = compute(events, duration=meta.duration)
+    stats = compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
     ended = meta.ended or meta.started
     line = summary_line(stats)
     if tier == "one_line":

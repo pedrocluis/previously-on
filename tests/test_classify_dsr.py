@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from previously_on.events import EventType
+from previously_on.events import QUEST_TYPES, EventType
 from previously_on.games import get_profile
 from previously_on.games.dsr import (
     BANNER_VOCAB,
@@ -332,7 +332,7 @@ def test_regions_are_consistent(profile):
     names = {r.name for r in profile.regions}
     assert set(profile.MIN_CONF) == names
     assert set(profile.quiet_after_event) <= names
-    for typ in EventType:
+    for typ in set(EventType) - QUEST_TYPES:
         assert typ in profile.cooldowns
     # The name strips stop above the bars' top border lines (0.812 and
     # 0.749 of the frame): the fill under them changes every hit.

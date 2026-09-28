@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from previously_on.events import EventType
+from previously_on.events import QUEST_TYPES, EventType
 from previously_on.games import get_profile
 from previously_on.games.ds3 import (
     BANNER_VOCAB,
@@ -378,5 +378,5 @@ def test_regions_are_consistent(profile):
     names = {r.name for r in profile.regions}
     assert set(profile.MIN_CONF) == names
     assert set(profile.quiet_after_event) <= names
-    for typ in EventType:
+    for typ in set(EventType) - QUEST_TYPES:
         assert typ in profile.cooldowns
