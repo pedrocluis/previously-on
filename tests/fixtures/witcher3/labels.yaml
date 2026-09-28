@@ -294,3 +294,46 @@
 - file: neg_map_tooltip_ingredient.jpg
   t: 4177            # chunk 01 t 577
   expected: []
+
+# -- chunk 03 (t = 10800 + the chunk's second) -------------------------------
+- file: neg_previous_night.jpg
+  t: 11368.5         # cutscene card "THE PREVIOUS NIGHT..." where a region name goes
+  expected:
+    - {type: dialogue}
+- file: boss_king_of_wolves_dark.jpg
+  t: 12945           # Ciri's flashback at night: the bar's edges are as dark as the scene
+  expected:
+    - {type: boss_engaged, text: King of Wolves}
+- file: quest_new_ciris_story.jpg
+  t: 12383           # read glued on every frame; snapped
+  expected:
+    - {type: quest_started, text: "Ciri's Story: The King of the Wolves"}
+- file: quest_new_contract_honorton.jpg
+  t: 12106           # "The" after the colon keeps its capital
+  expected:
+    - {type: quest_started, text: "Contract: The Beast of Honorton"}
+    - {type: dialogue}
+- file: area_velen_temeria.jpg
+  t: 10865.5         # "VELEN,NORTHERNTEMERIA", snapped
+  expected:
+    - {type: area_discovered, text: "Velen, Northern Temeria"}
+
+# -- chunk 04 (t = 14400 + the chunk's second) -------------------------------
+- file: boss_jenny.jpg
+  t: 15846           # "Jenny o'the Woods": the o'the kept her off the log all fight
+  expected:
+    - {type: boss_engaged, text: "Jenny o'the Woods"}
+- file: boss_golem.jpg
+  t: 17684           # a dark Place of Power: logged through the bar's fill, not its edges
+  expected:
+    - {type: boss_engaged, text: Golem}
+- file: area_byways_card.jpg
+  t: 16675           # cutscene card, "A FEW HOURS LATER..." under it; read glued
+  expected:
+    - {type: area_discovered, text: Northwest of the Village of Byways}
+    - {type: quest_completed, text: Hunting a Witch}
+- file: quest_updated_shrieker.jpg
+  t: 14582
+  expected:
+    - {type: quest_updated, text: "Contract: Shrieker"}
+    - {type: dialogue}

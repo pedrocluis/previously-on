@@ -284,3 +284,35 @@ def test_field_band_text_without_a_speaker_is_not_dialogue(profile, text):
 )
 def test_field_lines_with_a_speaker_are_dialogue(profile, text):
     assert profile.classify(SUBTITLE_FIELD, [_sub(SUBTITLE_FIELD, text, 0.30, 0.70)], BLACK)[0][0] is EventType.DIALOGUE
+
+
+def test_cutscene_cards_are_not_areas(profile):
+    # Chunk 03 t 568: "THE PREVIOUS NIGHT..." in the region-name slot.
+    lines = [L("THE PREVIOUS NIGHT...", 0.96, x0=0.55, y0=0.2, x1=0.93, y1=0.8)]
+    assert profile.classify(AREA_BANNER, lines, BLACK) == []
+
+
+def test_a_small_word_after_a_colon_keeps_its_capital(profile):
+    # Chunk 03 t 1306; and a glued read snaps (chunk 03 t 1583).
+    lines = [
+        L("NEWQUEST", 0.99, x0=0.113, y0=0.024, x1=0.250, y1=0.315),
+        L("CONTRACT:THE BEAST OF HONORTON", 0.96, x0=0.125, y0=0.444, x1=0.689, y1=0.782),
+    ]
+    assert profile.classify(QUEST_NOTICE, lines, None)[0][1] == "Contract: The Beast of Honorton"
+    lines[1] = L("CIRI'SSTORY:THEKINGOFTHEWOLVES", 0.97, x0=0.125, y0=0.444, x1=0.689, y1=0.782)
+    assert profile.classify(QUEST_NOTICE, lines, None)[0][1] == "Ciri's Story: The King of the Wolves"
+
+
+def test_a_boss_name_with_o_the(profile):
+    # Chunk 04 t 1446: "Jenny o'the Woods" (frame None: text rules only).
+    from previously_on.games.witcher3 import BOSS_BAR
+
+    r = BOSS_BAR
+    line = L("Jenny o'the Woods", 0.97, x0=(0.46 - r.x) / r.w, y0=0.2, x1=(0.54 - r.x) / r.w, y1=0.8)
+    assert profile.classify(BOSS_BAR, [line], None)[0][:2] == (EventType.BOSS_ENGAGED, "Jenny o'the Woods")
+
+
+def test_a_low_confidence_line_is_not_dialogue(profile):
+    # Chunk 04 t 182: the oil menu's "lmiunster lests." at 0.71; every real
+    # line of five hours read at 0.80 or more.
+    assert profile.classify(SUBTITLE, [_sub(SUBTITLE, "lmiunster lests.", 0.45, 0.55, conf=0.71)], BLACK) == []

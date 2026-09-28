@@ -151,6 +151,21 @@ KNOWN_QUESTS = (
     "Dirty Funds",  # chunk 01 t 2098, completed as "DIRTYFUNDS"
     "Deserter Gold",  # chunk 01 t 2222
     "On Death's Bed",  # chunk 01 t 1980, completed as "ONDEATH'SBED"
+    "Evil's Soft First Touches",  # chunk 03 t 118
+    "Wild at Heart",  # chunk 03 t 139
+    "Contract: Missing Brother",  # chunk 03 t 207
+    "Hunting a Witch",  # chunk 03 t 896
+    "Bloody Baron",  # chunk 03 t 901, started as "BLOODYBARON"
+    "Contract: The Beast of Honorton",  # chunk 03 t 1305
+    "Contract: Shrieker",  # chunk 03 t 1311
+    "Ciri's Story: The King of the Wolves",  # chunk 03 t 1583, never read with its spaces
+    "Family Matters",  # chunk 03 t 2591, started as "FAMILYMATTERS"
+    "Ciri's Room",  # chunk 03 t 2599
+    "Fists of Fury: Velen",  # chunk 03 t 3369
+    "Gwent: Velen Players",  # chunk 03 t 3373, "GWENT:VELENPLAYERS"
+    "Races: Crow's Perch",  # chunk 03 t 3378, "RACES:CROW'SPERCH"
+    "Contract: Jenny o' the Woods",  # chunk 04 t 989, "CONTRACT:JENNY O'THEWOODS"
+    "Wandering in the Dark",  # chunk 04 t 2294, "WANDERINGINTHEDARK"
     "Imperial Audience",  # chunk 02
     "The Nilfgaardian Connection",  # chunk 02
 )
@@ -165,11 +180,16 @@ KNOWN_AREAS = (
     "White Orchard Cemetery",  # chunk 01 t 697; 75 against "White Orchard"
     "Vizima, Capital of Occupied Temeria",  # chunk 02
     "Amavet Fortress Ruins",  # chunk 02
+    "Velen, Northern Temeria",  # chunk 03 t 65, "VELEN,NORTHERNTEMERIA"
+    "Northwest of the Village of Byways",  # chunk 04 t 2274, a cutscene card, read glued
 )
 KNOWN_AREA_MATCH = 90.0
 # Cutscene cards drawn where a region name goes (t 1378-1383, read "SOME
 # TIME LATER.", "SOMETIMELATER."). Matched space-stripped.
-AREA_STOPLIST = {"SOME TIME LATER"}
+AREA_STOPLIST = {"SOME TIME LATER", "THE PREVIOUS NIGHT"}
+# Those cards end in an ellipsis ("SOME TIME LATER...", "THE PREVIOUS
+# NIGHT...", chunk 03 t 568); no place name does.
+_ELLIPSIS = re.compile(r"(?:\.\.|…)\s*$")
 AREA_STOPLIST_MATCH = 85.0
 # Area banner right edge, frame: 0.939-0.941.
 AREA_RIGHT_EDGE = (0.925, 0.955)
@@ -279,8 +299,10 @@ class Witcher3Profile:
     MIN_CONF = {
         QUEST_NOTICE.name: 0.85,
         AREA_BANNER.name: 0.85,
-        SUBTITLE_FIELD.name: 0.60,
-        SUBTITLE.name: 0.60,
+        # Of the 1856 dialogue lines chunks 00-04 logged, one read under
+        # 0.80, and it was the oil menu's "lmiunster lests." (chunk 04 t 182).
+        SUBTITLE_FIELD.name: 0.80,
+        SUBTITLE.name: 0.80,
         BOSS_BAR.name: 0.80,
         DEATH_BANNER.name: 0.85,
     }
@@ -373,6 +395,8 @@ class Witcher3Profile:
         row = rows[0]
         if row.conf < self.MIN_CONF[AREA_BANNER.name]:
             return None
+        if _ELLIPSIS.search(row.text):
+            return None  # a cutscene card
         raw = _CAPS_DOT.sub(" ", row.text.strip())
         if not is_all_caps(raw) or not _LATIN_WORD.search(raw) or re.search(r"\d", raw):
             return None
@@ -505,7 +529,15 @@ def _looks_like_name(text: str) -> bool:
     words = [w for w in re.split(r"[\s,]+", text) if any(c.isalpha() for c in w)]
     if not words or not next(c for c in words[0] if c.isalpha()).isupper():
         return False
-    return all(next(c for c in w if c.isalpha()).isupper() or w.lower().strip("'") in _SMALL for w in words)
+    return all(
+        next(c for c in w if c.isalpha()).isupper() or w.lower().strip("'") in _SMALL or _OF_THE.match(w)
+        for w in words
+    )
+
+
+# "o'" and "o'the" join a name like "of the": "Jenny o'the Woods" (chunk 04,
+# read 78 times on her bar and rejected for its lower-case word).
+_OF_THE = re.compile(r"^o['’](?:the)?$", re.IGNORECASE)
 
 
 # has_boss_hp_bar: the bar's two edges must each be darker than the scene
@@ -534,13 +566,56 @@ def has_boss_hp_bar(frame: np.ndarray, bar: Region = BOSS_HP_BAR) -> bool:
     bottom = v[row(0.0700) : row(0.0735) + 1].min(axis=0)
     top_ok = float((top <= above - BAR_EDGE_CONTRAST).mean())
     bottom_ok = float((bottom <= below - BAR_EDGE_CONTRAST).mean())
-    return top_ok >= BAR_EDGE_SHARE and bottom_ok >= BAR_EDGE_SHARE
+    if top_ok >= BAR_EDGE_SHARE and bottom_ok >= BAR_EDGE_SHARE:
+        return True
+    return has_boss_bar_fill(frame)
+
+
+# In a dark scene the frame's edges are no darker than what surrounds them
+# and the test above fails: "King of Wolves" (chunk 03 t 2137-2158, Ciri's
+# flashback, at night) was read for twenty seconds and never logged. What
+# stands out there is the fill: at the bar's left end, a light band exactly
+# the bar's height between the two dark edges. On the three fight frames
+# (night and day, full and nearly empty) the edges read V 4-90, the fill
+# 158-192. The left end is filled whenever the boss has health left, which
+# is whenever the bar is drawn.
+BOSS_BAR_FILL_END = Region("boss_bar_fill_end", x=0.424, y=0.0565, w=0.016, h=0.0175)
+FILL_MIN_V = 140
+FILL_EDGE_CONTRAST = 80
+
+
+def has_boss_bar_fill(frame: np.ndarray, end: Region = BOSS_BAR_FILL_END) -> bool:
+    """True when the bar's left end holds a light fill between its dark edges."""
+    zone = crop(frame, end)
+    if zone.size == 0 or zone.shape[0] < 10:
+        return False
+    v = cv2.cvtColor(zone, cv2.COLOR_BGR2HSV)[:, :, 2].astype(int)
+    h = v.shape[0]
+
+    rows = np.median(v, axis=1)  # one value per row of the strip
+
+    def band(y0: float, y1: float) -> np.ndarray:
+        a = min(h - 1, max(0, int((y0 - end.y) / end.h * h)))
+        b = min(h, max(a + 1, int(np.ceil((y1 - end.y) / end.h * h))))
+        return rows[a:b]
+
+    # The darkest row of each edge (a row either way must not matter), the
+    # median of the fill.
+    top = float(band(0.0565, 0.0600).min())
+    fill = float(np.median(band(0.0640, 0.0697)))
+    bottom = float(band(0.0700, 0.0740).min())
+    return fill >= FILL_MIN_V and fill - top >= FILL_EDGE_CONTRAST and fill - bottom >= FILL_EDGE_CONTRAST
 
 
 def _name_case(text: str) -> str:
     """"CONTRACT: DEVIL BY THE WELL" -> "Contract: Devil by the Well"."""
     words = title_case(" ".join(_GLUED_PUNCT.sub(r"\1 ", text).split())).split()
-    return " ".join(w.lower() if i and w.lower() in _SMALL else w for i, w in enumerate(words))
+    # A small word after a colon starts a title of its own: "Contract: The
+    # Beast of Honorton" (chunk 03 t 1305).
+    return " ".join(
+        w.lower() if i and w.lower() in _SMALL and not words[i - 1].endswith(":") else w
+        for i, w in enumerate(words)
+    )
 
 
 def _snap(name: str, known: tuple[str, ...], threshold: float) -> str:
