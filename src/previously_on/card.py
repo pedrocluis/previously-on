@@ -7,7 +7,8 @@ nothing that is not already on the timeline — and the same PNG comes out
 of ``previously-on card`` and the window's Timeline page.
 
 The look is the window's: moss-black ground, bone text, the rust rule,
-lichen green only for what was felled, Mona Sans across its width axis.
+lichen green only for what was felled, Mona Sans across its width axis
+(``THEMES`` holds that palette and two others drawn from the same tokens).
 The font is the one the window ships (``app/ui/fonts``); FreeType reads
 the woff2 and its variation axes directly.
 """
@@ -30,15 +31,32 @@ WIDTH, HEIGHT = 1600, 900
 MARGIN = 104
 HARDEST = 3  # fights listed
 
-# The window's palette (app.css), converted from oklch.
-INK = "#11140e"
-RAIL = "#0c0e09"
-LINE = "#34372e"
-TEXT = "#ebe8db"
-DIM = "#b2b2a4"
-FAINT = "#7a7c6f"
-ACCENT = "#e07c55"
-FELLED = "#b4cb8e"
+
+
+@dataclass(frozen=True, slots=True)
+class Theme:
+    ink: str  # the ground
+    rail: str  # the footer band
+    line: str
+    text: str
+    dim: str
+    faint: str
+    accent: str
+    felled: str
+
+
+# The window's palette (app.css), converted from oklch. The other themes
+# keep its roles and draw from the same tokens: ``bone`` turns it light,
+# ``ember`` warms the ground toward the rust and marks the felled in the
+# window's gold (``--standing``). The website lets Premium players pick one.
+MOSS = Theme("#11140e", "#0c0e09", "#34372e", "#ebe8db", "#b2b2a4", "#7a7c6f", "#e07c55", "#b4cb8e")
+BONE = Theme("#ebe8db", "#dedacb", "#c3c0b1", "#11140e", "#45473d", "#6d6f62", "#a9553a", "#566f35")
+EMBER = Theme("#1b120e", "#140d0a", "#43302a", "#ebe8db", "#c2b2a6", "#8c786c", "#e07c55", "#d8b26d")
+THEMES = {"moss": MOSS, "bone": BONE, "ember": EMBER}
+DEFAULT_THEME = "moss"
+INK, RAIL, LINE, TEXT, DIM, FAINT, ACCENT, FELLED = (
+    MOSS.ink, MOSS.rail, MOSS.line, MOSS.text, MOSS.dim, MOSS.faint, MOSS.accent, MOSS.felled
+)
 
 SITE = "github.com/pedrocluis/previously-on"
 
@@ -206,13 +224,13 @@ def _fit(draw, text: str, max_width: float, size: int, min_size: int, weight: in
     return text.rstrip() + "…", font
 
 
-def _rule(draw, x: float, y: float, length: float) -> None:
+def _rule(draw, x: float, y: float, length: float, t: Theme = MOSS) -> None:
     """The window's one ornament: a short rust bar on a fading hairline."""
     steps = 48
     for i in range(steps):
         a = 1 - i / steps
-        draw.line([(x + length * i / steps, y), (x + length * (i + 1) / steps, y)], fill=_mix(LINE, INK, a), width=1)
-    draw.rectangle([x, y - 1, x + 48, y + 2], fill=ACCENT)
+        draw.line([(x + length * i / steps, y), (x + length * (i + 1) / steps, y)], fill=_mix(t.line, t.ink, a), width=1)
+    draw.rectangle([x, y - 1, x + 48, y + 2], fill=t.accent)
 
 
 def _mix(a: str, b: str, t: float) -> str:
@@ -222,26 +240,28 @@ def _mix(a: str, b: str, t: float) -> str:
     return "#" + "".join(f"{round(x * t + y * (1 - t)):02x}" for x, y in zip(ca, cb))
 
 
-def render(p: Playthrough, display_name: str):
+def render(p: Playthrough, display_name: str, theme: str = DEFAULT_THEME):
     """The card as a 1600×900 RGB image (16:9 — what every feed and chat
     previews without cropping)."""
     from PIL import Image, ImageDraw
 
-    img = Image.new("RGB", (WIDTH, HEIGHT), INK)
+    t = THEMES[theme]
+
+    img = Image.new("RGB", (WIDTH, HEIGHT), t.ink)
     draw = ImageDraw.Draw(img)
     x0, right = MARGIN, WIDTH - MARGIN
 
     # Title: "Previously on" in rust caps over the game, its subtitle below.
-    _caps(draw, (x0, 92), "Previously on", 22, ACCENT)
+    _caps(draw, (x0, 92), "Previously on", 22, t.accent)
     title, _, subtitle = display_name.partition(": ")
     text, font = _fit(draw, title, right - x0, 84, 56, 820, 125)
-    draw.text((x0, 128), text, font=font, fill=TEXT)
+    draw.text((x0, 128), text, font=font, fill=t.text)
     y = 128 + 96
     if subtitle:
         text, font = _fit(draw, subtitle, right - x0, 38, 28, 560, 112)
-        draw.text((x0, y), text, font=font, fill=DIM)
+        draw.text((x0, y), text, font=font, fill=t.dim)
         y += 52
-    _rule(draw, x0, y + 22, 720)
+    _rule(draw, x0, y + 22, 720, t)
     body = y + 86  # the top of the numbers' caps and of the fights column
 
     # The numbers.
@@ -249,8 +269,8 @@ def render(p: Playthrough, display_name: str):
     listed = hardest or p.felled[-HARDEST:][::-1]  # nobody took two tries: the latest ones felled
     split = 1000 if listed else right  # where the fights column starts
     n, unit = playtime(p.seconds)
-    blocks = [(n, unit, TEXT), (str(p.deaths), "death" if p.deaths == 1 else "deaths", TEXT)]
-    blocks.append((str(len(p.felled)), "boss felled" if len(p.felled) == 1 else "bosses felled", FELLED))
+    blocks = [(n, unit, t.text), (str(p.deaths), "death" if p.deaths == 1 else "deaths", t.text)]
+    blocks.append((str(len(p.felled)), "boss felled" if len(p.felled) == 1 else "bosses felled", t.felled))
     gap = 64
     label_font = _font(20, 650, 112)
     size = 150
@@ -267,43 +287,43 @@ def render(p: Playthrough, display_name: str):
     x = x0
     for (number, label, colour), w in zip(blocks, widths):
         draw.text((x, baseline), number, font=big, fill=colour, anchor="ls")
-        _caps(draw, (x + 4, baseline + 28), label, 20, FAINT)
+        _caps(draw, (x + 4, baseline + 28), label, 20, t.faint)
         x += w + gap
 
     # The fights column.
     if listed:
-        _caps(draw, (split, body - 6), "Hardest fights" if hardest else "Latest felled", 20, FAINT)
+        _caps(draw, (split, body - 6), "Hardest fights" if hardest else "Latest felled", 20, t.faint)
         y = body + 40
         for fight in listed:
             name, font = _fit(draw, fight.name, right - split, 36, 26, 640)
-            draw.text((split, y + 36), name, font=font, fill=TEXT, anchor="ls")
+            draw.text((split, y + 36), name, font=font, fill=t.text, anchor="ls")
             said = tries(fight.attempts) if fight.attempts > 1 else "first try"
-            draw.text((split, y + 74), said, font=_font(26, 560, 112), fill=FELLED, anchor="ls")
+            draw.text((split, y + 74), said, font=_font(26, 560, 112), fill=t.felled, anchor="ls")
             y += 100
-        draw.line([(split - 48, body - 6), (split - 48, y - 16)], fill=LINE, width=1)
+        draw.line([(split - 48, body - 6), (split - 48, y - 16)], fill=t.line, width=1)
 
     # Footer: when, how much, and where it came from.
-    draw.rectangle([0, HEIGHT - 132, WIDTH, HEIGHT], fill=RAIL)
-    draw.line([(0, HEIGHT - 132), (WIDTH, HEIGHT - 132)], fill=_mix(LINE, RAIL, 0.6), width=1)
+    draw.rectangle([0, HEIGHT - 132, WIDTH, HEIGHT], fill=t.rail)
+    draw.line([(0, HEIGHT - 132), (WIDTH, HEIGHT - 132)], fill=_mix(t.line, t.rail, 0.6), width=1)
     facts = [date_span(p.first, p.last), f"{p.sessions} session{'s' if p.sessions != 1 else ''}"]
     if p.areas:
         facts.append(f"{len(p.areas)} place{'s' if len(p.areas) != 1 else ''}")
-    draw.text((x0, HEIGHT - 66), "  ·  ".join(f for f in facts if f), font=_font(26, 500), fill=DIM, anchor="lm")
+    draw.text((x0, HEIGHT - 66), "  ·  ".join(f for f in facts if f), font=_font(26, 500), fill=t.dim, anchor="lm")
     mark = _font(30, 820, 125)
     dots = draw.textlength("…", font=mark)
     wx = right - dots - draw.textlength("Previously on", font=mark)
-    draw.text((wx, HEIGHT - 76), "Previously on", font=mark, fill=TEXT, anchor="ls")
-    draw.text((right - dots, HEIGHT - 76), "…", font=mark, fill=ACCENT, anchor="ls")
+    draw.text((wx, HEIGHT - 76), "Previously on", font=mark, fill=t.text, anchor="ls")
+    draw.text((right - dots, HEIGHT - 76), "…", font=mark, fill=t.accent, anchor="ls")
     site = _font(18, 500)
-    draw.text((right - draw.textlength(SITE, font=site), HEIGHT - 44), SITE, font=site, fill=FAINT, anchor="ls")
+    draw.text((right - draw.textlength(SITE, font=site), HEIGHT - 44), SITE, font=site, fill=t.faint, anchor="ls")
     return img
 
 
-def png(p: Playthrough, display_name: str) -> bytes:
+def png(p: Playthrough, display_name: str, theme: str = DEFAULT_THEME) -> bytes:
     from io import BytesIO
 
     buf = BytesIO()
-    render(p, display_name).save(buf, "PNG", optimize=True)
+    render(p, display_name, theme).save(buf, "PNG", optimize=True)
     return buf.getvalue()
 
 

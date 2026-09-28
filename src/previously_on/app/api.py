@@ -25,6 +25,7 @@ from ..recap.store import sessions_dir, summarize_after_run
 from ..session import default_data_dir
 from . import views
 from .account import Account, AccountError
+from .hosted import pick_provider, quota
 from .autostart import Autostart
 from .config import AppConfig, mask_key
 from .sync import SyncWorker
@@ -107,6 +108,7 @@ class Api:
                 out["first_run"] = {
                     "games": [q.display_name for q in self._profiles.values()],
                     "has_key": self._has_key(),
+                    "signed_in": self._signed_in(),
                     "tray": self.tray,
                     "autostart": self._autostart_state(),
                 }
@@ -245,7 +247,7 @@ class Api:
 
         def work() -> None:
             try:
-                record, message = summarize_after_run(log, profile)
+                record, message = summarize_after_run(log, profile, make=lambda: pick_provider(self._account))
                 self._summarizing = {"state": "done" if record else "failed", "session": stamp, "message": message}
             finally:
                 self._summarize_lock.release()
@@ -318,6 +320,18 @@ class Api:
         if _default_model().startswith("claude"):
             return bool(c.anthropic_api_key.strip() or os.environ.get("ANTHROPIC_API_KEY"))
         return bool(c.openai_api_key.strip() or os.environ.get("OPENAI_API_KEY"))
+
+    def _signed_in(self) -> bool:
+        return self._account is not None and bool(self._account.token())
+
+    def recap_source(self) -> dict:
+        """Who writes the recaps: the player's key, else their account (with
+        what is left of its allowance), else nobody."""
+        if self._has_key():
+            return {"source": "key"}
+        if not self._signed_in():
+            return {"source": "none"}
+        return {"source": "account", "quota": quota(self._account)}
 
     def _autostart_state(self) -> dict:
         if self._autostart is None:

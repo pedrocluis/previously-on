@@ -6,6 +6,7 @@ stood after its session, so re-running an old session re-chains cleanly.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from .schema import PlaythroughState, RecapRecord
 from .verify import verify
 
 RECAP_SUFFIX = ".recap.json"
+NO_CREDENTIALS = "no API key and not signed in; skipping the recap — write it later"
 
 
 def session_id(session_path: Path) -> str:
@@ -84,16 +86,20 @@ def summarize_session(session_path: Path, profile: GameProfile, provider: RecapP
     return record
 
 
-def summarize_after_run(session_path: Path, profile: GameProfile) -> tuple[RecapRecord | None, str]:
+def summarize_after_run(
+    session_path: Path, profile: GameProfile, make: Callable[[], RecapProvider] | None = None
+) -> tuple[RecapRecord | None, str]:
     """The end-of-session pass for live capture: never raises, because the
     session log is already safe on disk and nothing here may lose it.
-    Returns the record (or ``None``) and a line saying what happened."""
+    Returns the record (or ``None``) and a line saying what happened.
+    ``make`` picks the provider (the window's picks the player's key, else
+    their previouslyon.gg account); the default is ``make_provider``."""
     from .provider import RecapError, make_provider
 
     try:
-        provider = make_provider()
-        if not provider.has_credentials:
-            return None, "no API credentials (OPENAI_API_KEY); skipping the recap — run `summarize` later"
+        provider = (make or make_provider)()
+        if not getattr(provider, "has_credentials", True):
+            return None, NO_CREDENTIALS
         record = summarize_session(session_path, profile, provider)
     except RecapError as exc:
         return None, f"recap failed: {exc}"
