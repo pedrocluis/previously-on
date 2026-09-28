@@ -23,6 +23,7 @@ from ..session import default_data_dir
 from .account import Account
 from .api import Api
 from .autostart import BACKGROUND_FLAG, Autostart
+from .hosted import pick_provider
 from .config import AppConfig, default_config_path
 from .instance import InstanceServer, signal_quit, signal_running
 from .sync import SyncWorker
@@ -122,7 +123,7 @@ def run_app(
         """Upload a session when it ends, and again once its recap is written."""
         sync.enqueue(profile.id)
         try:
-            return summarize_after_run(log, profile)
+            return summarize_after_run(log, profile, make=lambda: pick_provider(account))
         finally:
             sync.enqueue(profile.id)
 

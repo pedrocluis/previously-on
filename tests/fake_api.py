@@ -21,6 +21,9 @@ class FakeApi:
         self.polls = 0
         self.revoked = False
         self.full = False  # answer uploads with 413 account_full
+        self.recap: dict | None = None  # what /v1/recap answers with; None = the quota is used
+        self.recap_prompts: list[str] = []
+        self.quota = {"plan": "free", "used": 1, "limit": 3}
         self.extra_sessions: list[dict] = []  # raw manifest entries, as a broken or hostile server might send
         self.calls: list[tuple[str, str]] = []
         api = self
@@ -61,6 +64,14 @@ class FakeApi:
                     if api.polls <= api.approve_after:
                         return self._send(400, {"error": "authorization_pending"})
                     return self._send(200, {"token": TOKEN, "device_id": "d1", "account": "player@example.com"})
+                if self.path == "/v1/recap" and self._authed():
+                    api.recap_prompts.append(body["user"])
+                    if api.recap is None:
+                        return self._send(402, {"detail": {"error": "hosted_quota", **api.quota, "used": 3}})
+                    return self._send(200, {"recap": api.recap, "model": "gpt-5.4-mini",
+                                            "usage": {"input_tokens": 1000, "output_tokens": 200}})
+                if self.path == "/v1/recap":
+                    return
                 self._send(404, {"detail": "no"})
 
             def do_DELETE(self):
@@ -73,6 +84,8 @@ class FakeApi:
                 api.calls.append(("GET", self.path))
                 if not self._authed():
                     return
+                if self.path == "/v1/recap/quota":
+                    return self._send(200, api.quota)
                 m = re.fullmatch(r"/v1/sync/(\w+)(?:/(.+))?", self.path)
                 game, name = m.group(1), m.group(2)
                 if name is None:

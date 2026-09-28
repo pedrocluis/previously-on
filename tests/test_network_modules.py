@@ -12,7 +12,7 @@ NETWORK = {"urllib.request", "http.client", "socket", "ssl", "httpx", "requests"
 
 ALLOWED = {
     "recap/provider.py",  # the recap model's API (Anthropic or OpenAI), with the player's key
-    "app/account.py",     # the account and sync API; app/sync.py calls through account.request
+    "app/account.py",     # the account and sync API; app/sync.py and app/hosted.py call through account.request
     "app/instance.py",    # localhost only: the second copy asks the first to show itself
 }
 

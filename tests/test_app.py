@@ -480,6 +480,17 @@ def test_card_numbers_and_image(tmp_path, eldenring):
     assert card.png(p, "Elden Ring").startswith(b"\x89PNG")
 
 
+def test_card_themes(tmp_path, eldenring):
+    from previously_on import card
+
+    playthrough(tmp_path, eldenring)
+    p = card.gather(GAME, tmp_path)
+    drawn = {name: card.render(p, "Elden Ring", name) for name in card.THEMES}
+    assert card.render(p, "Elden Ring").tobytes() == drawn["moss"].tobytes()  # the default is the window's
+    for name, img in drawn.items():
+        assert img.getpixel((5, 5)) == tuple(int(card.THEMES[name].ink[i:i + 2], 16) for i in (1, 3, 5))
+
+
 def test_card_date_span():
     from previously_on.card import date_span
 

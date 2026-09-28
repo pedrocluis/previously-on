@@ -141,7 +141,9 @@ function firstRunStatus(s) {
 function renderFirstRun(f) {
   const key = f.has_key
     ? '<strong>A key is set.</strong> Each session gets a written recap when it ends.'
-    : '<strong>For written recaps, paste an OpenAI key in <a href="#settings">Settings</a>.</strong> Without one, the one-line recap, stats, the timeline and search still work.';
+    : f.signed_in
+      ? '<strong>Recaps come from your previouslyon.gg account</strong> (a key in <a href="#settings">Settings</a> would be used first).'
+      : '<strong>For written recaps, paste an OpenAI key in <a href="#settings">Settings</a>, or sign in to previouslyon.gg there.</strong> Without either, the one-line recap, stats, the timeline and search still work.';
   const auto = f.autostart.supported
     ? `<label class="check"><input type="checkbox" id="fr-autostart" ${f.autostart.enabled ? 'checked' : ''}>Start when I sign in, in the ${f.tray ? 'tray' : 'background'}</label>` : '';
   const stay = f.tray ? 'Closing this window keeps it watching from the tray.' : 'Leave this window open while you play.';
@@ -194,7 +196,7 @@ async function renderHome() {
     notice = `<div class="notice"><p>This session has no written recap yet` +
       (st.state === 'failed' && st.session === h.session ? ` — ${esc(st.message)}` : '') + `.</p>
       <div class="row"><button id="summarize" class="primary" ${busy ? 'disabled' : ''}>${busy ? 'Writing the recap…' : 'Write it now'}</button>
-      <span class="hint">Needs an API key (<a href="#settings">Settings</a>). Only the text log is sent, never a frame.</span></div></div>`;
+      <span class="hint">Needs an API key or a previouslyon.gg sign-in (<a href="#settings">Settings</a>). Only the text log is sent, never a frame.</span></div></div>`;
   }
   const st = h.state;
   let margin = '';
@@ -418,7 +420,8 @@ async function renderSettings(saved) {
   main.innerHTML = `<h1 class="small">Settings</h1><hr class="rule"><form id="settings">
     <div class="set">
       <div class="about"><h3>Recaps</h3>
-        <p class="hint">One model call per session, when it ends. Only the text event log is sent, never a frame. It costs cents per session. Stats, the timeline and search work without a key.</p></div>
+        <p class="hint">One model call per session, when it ends. Only the text event log is sent, never a frame. It costs cents per session. Stats, the timeline and search work without a key.</p>
+        <p class="hint" id="recap-source"></p></div>
       <div>
         ${keyField('openai_api_key', 'OpenAI API key', s.openai_api_key, s.has_openai_key, s.env_overrides.includes('OPENAI_API_KEY'))}
         ${keyField('anthropic_api_key', 'Anthropic API key, for claude-* models', s.anthropic_api_key, s.has_anthropic_key, s.env_overrides.includes('ANTHROPIC_API_KEY'))}
@@ -449,6 +452,7 @@ async function renderSettings(saved) {
   </form>
   <div class="set" id="account-set"></div>`;
   renderAccount();
+  renderRecapSource();
   document.getElementById('open-dir').onclick = () => call('open_data_dir');
   document.getElementById('settings').onsubmit = async e => {
     e.preventDefault();
@@ -468,6 +472,19 @@ async function renderSettings(saved) {
     await renderSettings(r);
     document.getElementById('saved').textContent = 'Saved.';
   };
+}
+
+// Which way recaps are written: the key, else the account and what is left of it.
+async function renderRecapSource() {
+  const r = await call('recap_source');
+  const el = document.getElementById('recap-source');
+  if (!el || r.error) return;
+  const q = r.quota;
+  el.innerHTML = r.source === 'key' ? 'Recaps use your key.'
+    : r.source === 'none' ? 'No key? Sign in under Account: previouslyon.gg writes 3 recaps free, and more with Premium.'
+    : !q ? 'No key: recaps come from your previouslyon.gg account.'
+    : q.plan === 'free' ? `No key: recaps come from your previouslyon.gg account — ${q.limit - q.used} of ${q.limit} free left.`
+    : `No key: recaps come from your previouslyon.gg account (Premium, ${q.used} of ${q.limit} this year).`;
 }
 
 // --- account (settings) ----------------------------------------------------------------

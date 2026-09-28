@@ -7,9 +7,10 @@ Credential Manager through ``keyring``), never in ``config.json``; if
 there is no credential store the app says so rather than write it
 anywhere else.
 
-This and ``sync.py`` are the only modules besides ``recap/provider.py``
-that make network requests, and only once the player signs in. The
-website's /privacy page says what they send.
+This, ``sync.py`` and ``hosted.py`` (which call through ``request``) are
+the only modules besides ``recap/provider.py`` that make network requests,
+and only once the player signs in. The website's /privacy page says what
+they send.
 """
 
 from __future__ import annotations
@@ -101,6 +102,7 @@ def request(
     json_body: dict | None = None,
     data: bytes | None = None,
     base: str | None = None,
+    timeout: float = TIMEOUT,
 ) -> tuple[int, bytes]:
     """One call to the API: (status, body). A 4xx comes back as a status; a
     network failure raises ``AccountError``."""
@@ -114,7 +116,7 @@ def request(
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request((base or api_base()) + path, data=data, method=method, headers=headers)
     try:
-        with _opener.open(req, timeout=TIMEOUT) as resp:
+        with _opener.open(req, timeout=timeout) as resp:
             return resp.status, resp.read()
     except urllib.error.HTTPError as e:
         if e.code >= 500:
