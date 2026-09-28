@@ -101,6 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_game_arg(cd)
     cd.add_argument("--data-dir", type=Path)
     cd.add_argument("--out", type=Path, help="where to write it (default: previously-on-<game>-<date>.png here)")
+    cd.add_argument("--no-names", action="store_true", help="hide boss names, as under the website's spoiler guard")
 
     ex = sub.add_parser("export", help="zip one session's event log and recap to attach to a GitHub issue (text only)")
     _add_game_arg(ex)
@@ -381,7 +382,7 @@ def cmd_card(args: argparse.Namespace) -> int:
         print(f"no sessions logged for {args.game}", file=sys.stderr)
         return 1
     out = args.out or Path(card.filename(args.game))
-    out.write_bytes(card.png(play, get_profile(args.game).display_name))
+    out.write_bytes(card.png(play, get_profile(args.game).display_name, names=not args.no_names))
     print(f"{out}  {card.line(play)}")
     return 0
 

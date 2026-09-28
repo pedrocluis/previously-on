@@ -15,12 +15,13 @@
   --line-soft: oklch(0.26 0.014 124);
   --text: oklch(0.93 0.017 95);
   --dim: oklch(0.76 0.02 108);
-  --faint: oklch(0.58 0.02 115);
+  --faint: oklch(0.62 0.02 115);  /* 0.58 until 2026-09-28: small print now clears AA (4.5:1) on every ground, as on the website */
   --accent: oklch(0.69 0.135 42);
   --accent-deep: oklch(0.56 0.115 40);
   --standing: oklch(0.80 0.10 78);
   --felled: oklch(0.81 0.085 125);
   --error: oklch(0.66 0.15 25);
+  --edge: oklch(0.52 0.016 122);  /* form control edges: 3:1 against every ground (WCAG 1.4.11) */
 
   --font: "Mona Sans", "Segoe UI", system-ui, sans-serif;
   --ease: cubic-bezier(0.25, 1, 0.5, 1);
@@ -34,11 +35,12 @@
 html, body { height: 100%; }
 body { margin: 0; background: var(--ink); color: var(--text); -webkit-font-smoothing: antialiased; }
 ::selection { background: color-mix(in oklch, var(--accent) 40%, transparent); }
+html { scrollbar-color: var(--line) var(--rail); caret-color: var(--accent); }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 code { font-family: ui-monospace, Consolas, monospace; font-size: 0.86em; color: var(--dim);
   background: var(--raise); padding: 1px 5px; border-radius: 3px; word-break: break-all; }
-:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* Labels: small, slightly wide caps. */
 .eyebrow, nav a, .label, h2, .margin h4, th, .tag, button, .outcome, .talk .who,
@@ -123,6 +125,17 @@ h3 { font-stretch: 118%; font-weight: 750; font-size: 19px; letter-spacing: -0.0
 .error { color: var(--error); }
 .hint { font-size: 13px; color: var(--faint); line-height: 1.5; margin: 6px 0 0; }
 
+/* A message under the control it is about, as on the website: an error
+   (announced, and said in words, not only in red) or a quiet confirmation. */
+p.note { font-size: 13px; line-height: 1.5; margin: 8px 0 0; max-width: 60ch; }
+p.note.error { color: var(--text); }
+p.note.error::before { content: "Couldn't do that. "; font-weight: 650; color: var(--error); }
+p.note.done { color: var(--dim); }
+.watch p.note { margin: 8px 0 0; }
+
+/* A session's place in the playthrough, "Episode 15", as the website numbers it. */
+.ep { display: block; font-stretch: 112%; text-transform: uppercase; font-size: 10px; font-weight: 650; letter-spacing: 0.12em; color: var(--faint); margin-bottom: 3px; }
+
 /* The recap: the thing the app exists for, set to be read. */
 .prose { font-size: 17px; line-height: 1.65; color: var(--dim); max-width: 64ch; }
 .prose p { margin: 0 0 0.95em; }
@@ -150,8 +163,12 @@ h3 { font-stretch: 118%; font-weight: 750; font-size: 19px; letter-spacing: -0.0
 
 details summary { cursor: pointer; color: var(--dim); font-size: 13px; list-style: none; }
 details summary::-webkit-details-marker { display: none; }
-details summary::before { content: "+"; display: inline-block; width: 14px; color: var(--accent); font-weight: 700; }
-details[open] summary::before { content: "–"; }
+/* The disclosure mark, as on the website: a drawn chevron that turns when open. */
+details summary::before { content: ""; display: inline-block; width: 0.42em; height: 0.42em; margin: 0 0.62em 0.14em 0.1em;
+  border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(-45deg);
+  transition: transform 150ms var(--ease); }
+details[open] summary::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { details summary::before { transition: none; } }
 details summary:hover { color: var(--text); }
 details ul { margin: 10px 0 0; padding: 0 0 0 14px; list-style: none; font-size: 14px; line-height: 1.55; color: var(--dim); }
 details ul li { padding: 2px 0; }
@@ -298,9 +315,9 @@ tbody tr:hover td { background: color-mix(in oklch, var(--raise) 60%, transparen
 .field + .field { margin-top: 20px; }
 .field > label { display: block; font-size: 12.5px; font-weight: 600; color: var(--dim); margin-bottom: 7px; }
 input[type=text], input[type=password], input[type=number] {
-  width: 100%; max-width: 440px; background: var(--raise); color: var(--text); border: 1px solid var(--line-soft);
+  width: 100%; max-width: 440px; background: var(--raise); color: var(--text); border: 1px solid var(--edge);
   border-radius: 3px; padding: 9px 11px; font: inherit; font-size: 14px; transition: border-color 140ms var(--ease); }
-input[type=text]:focus, input[type=password]:focus, input[type=number]:focus { outline: none; border-color: var(--accent-deep); }
+input[type=text]:focus-visible, input[type=password]:focus-visible, input[type=number]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 input::placeholder { color: var(--faint); }
 input[type=number] { max-width: 90px; }
 .check { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--dim); margin-top: 9px; cursor: pointer; }
