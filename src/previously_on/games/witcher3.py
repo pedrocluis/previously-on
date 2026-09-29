@@ -166,6 +166,11 @@ KNOWN_QUESTS = (
     "Races: Crow's Perch",  # chunk 03 t 3378, "RACES:CROW'SPERCH"
     "Contract: Jenny o' the Woods",  # chunk 04 t 989, "CONTRACT:JENNY O'THEWOODS"
     "Wandering in the Dark",  # chunk 04 t 2294, "WANDERINGINTHEDARK"
+    "Ladies of the Wood",  # chunk 05 t 726, "LADIESOF THEWOOD"
+    "Magic Lamp",  # chunk 05 t 999, "MAGICLAMP"
+    "Don't Play with the Gods",  # chunk 05 t 1409, completed as "DON'TPLAYWITHTHEGODS"
+    "An Invitation from Keira Metz",  # chunk 05 t 2219, "KEIRAIMETZ"
+    "A Princess in Distress",  # chunk 05 t 2715
     "Imperial Audience",  # chunk 02
     "The Nilfgaardian Connection",  # chunk 02
 )

@@ -16,12 +16,12 @@ Supported games (PC, 16:9, English UI):
 | Dark Souls II: Scholar of the First Sin | `ds2` | an 8.6-hour playthrough |
 | Dark Souls III | `ds3` | a 9.6-hour playthrough |
 | Sekiro: Shadows Die Twice | `sekiro` | an 8-hour playthrough |
-| The Witcher 3: Wild Hunt | `witcher3` | the first 3 hours of a playthrough (not yet live) |
+| The Witcher 3: Wild Hunt | `witcher3` | a 6.2-hour playthrough (not yet live) |
 
 The five FromSoftware profiles were validated on a full-length recorded
 playthrough and have run live against the real game on Windows. The Witcher 3
-is new: validated on three hours of a recorded playthrough, not yet tried
-against the running game. It logs quests (started, updated, completed) as
+is new: validated on a 6.2-hour recorded playthrough, not yet tried against
+the running game. It logs quests (started, updated, completed) as
 well as areas, items, bosses, deaths and dialogue; the game never announces a
 boss's defeat, so a Witcher fight is "fought", never "felled".
 
