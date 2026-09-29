@@ -286,8 +286,10 @@ tbody tr:hover td { background: color-mix(in oklch, var(--raise) 60%, transparen
 .moments .area .name { color: var(--faint); font-weight: 450; }
 .moments .area .name::before { content: "→ "; color: var(--accent-deep); }
 .moments .boss .name { color: var(--text); font-weight: 600; }
+.moments .quest .name { color: var(--text); }
 .moments .detail { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--standing); margin-left: 10px; }
 .moments .detail.felled { color: var(--felled); }
+.moments .detail.plain { color: var(--faint); }
 .entry details { margin-top: 12px; }
 @container (max-width: 620px) {
   .chron::before, .entry::before { display: none; }

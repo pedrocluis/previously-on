@@ -114,7 +114,7 @@ def home(game: str, data_dir: Path | None, now: datetime | None = None) -> dict:
         return {"empty": True}
     log = logs[-1]
     meta, events = read_session(log)
-    stats = compute(events, duration=meta.duration)
+    stats = compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
     ended = meta.ended or meta.started
     record = _record_for(log)
     out = _session_row(log, meta, events, stats, record, len(logs))
@@ -146,7 +146,7 @@ def sessions(game: str, data_dir: Path | None) -> list[dict]:
     logs = list_logs(game, data_dir)
     for n, log in reversed(list(enumerate(logs, 1))):
         meta, events = read_session(log)
-        stats = compute(events, duration=meta.duration)
+        stats = compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
         rows.append(_session_row(log, meta, events, stats, _record_for(log), n))
     return rows
 
@@ -156,7 +156,7 @@ def session(game: str, data_dir: Path | None, stamp: str) -> dict | None:
     if not log.is_file():
         return None
     meta, events = read_session(log)
-    stats = compute(events, duration=meta.duration)
+    stats = compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
     record = _record_for(log)
     out = _session_row(log, meta, events, stats, record, list_logs(game, data_dir).index(log) + 1)
     out["event_list"] = [
@@ -187,16 +187,16 @@ def session(game: str, data_dir: Path | None, stamp: str) -> dict | None:
 
 
 def timeline(game: str, data_dir: Path | None) -> list[dict]:
-    """The playthrough oldest → newest: per session, its areas and boss
-    fights in order, with items folded into a count (names on request) and
-    checkpoints counted — the banner names no grace."""
+    """The playthrough oldest → newest: per session, its areas, boss fights
+    and completed quests in order, with items folded into a count (names on
+    request) and checkpoints counted — the banner names no grace."""
     by_session: dict[str, list[index_mod.Entry]] = {}
     for e in index_mod.build(game, data_dir).entries:
         by_session.setdefault(e.session, []).append(e)
     out = []
     for n, log in enumerate(list_logs(game, data_dir), 1):
         meta, events = read_session(log)
-        stats = compute(events, duration=meta.duration)
+        stats = compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
         row = _session_row(log, meta, events, stats, _record_for(log), n)
         entries = sorted(by_session.get(row["session"], []), key=lambda e: e.t_rel)
         moments = []
@@ -204,7 +204,7 @@ def timeline(game: str, data_dir: Path | None) -> list[dict]:
         for e in entries:
             if e.kind == "item":
                 item_counts[e.name] = item_counts.get(e.name, 0) + 1
-            elif e.kind in ("area", "boss"):
+            elif e.kind in ("area", "boss") or (e.kind == "quest" and e.detail == "completed"):
                 moments.append(
                     {"kind": e.kind, "name": e.name, "at": _clock(e.t_rel), "location": e.location, "detail": e.detail}
                 )

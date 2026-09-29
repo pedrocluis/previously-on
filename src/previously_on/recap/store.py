@@ -66,7 +66,7 @@ def previous_state(session_path: Path) -> PlaythroughState:
 def summarize_session(session_path: Path, profile: GameProfile, provider: RecapProvider) -> RecapRecord:
     """The one recap pass: read, compact, ask, verify, write. Returns the record."""
     meta, events = read_session(session_path)
-    stats = compute(events, duration=meta.duration)
+    stats = compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
     sid = session_id(session_path)
     previous = previous_state(session_path)
     transcript = compact_mod.compact(meta, events, stats)

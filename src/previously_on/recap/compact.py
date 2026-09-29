@@ -46,7 +46,7 @@ def _fights_by_defeat(events: list[Event], stats: stats_mod.SessionStats) -> dic
 
 def compact(meta: SessionMeta, events: list[Event], stats: stats_mod.SessionStats | None = None) -> str:
     if stats is None:
-        stats = stats_mod.compute(events, duration=meta.duration)
+        stats = stats_mod.compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
     fights = _fights_by_defeat(events, stats)
     lines = [f"Session {meta.started:%Y-%m-%d %H:%M} · {stats_mod.summary_line(stats)}", ""]
 
@@ -84,6 +84,12 @@ def compact(meta: SessionMeta, events: list[Event], stats: stats_mod.SessionStat
                 lines.append(f"#{i} [{t}] boss fight: {ev.text}")
             case EventType.DEATH:
                 lines.append(f"#{i} [{t}] died")
+            case EventType.QUEST_STARTED:
+                lines.append(f"#{i} [{t}] quest started: {ev.text}")
+            case EventType.QUEST_UPDATED:
+                lines.append(f"#{i} [{t}] quest updated: {ev.text}")
+            case EventType.QUEST_COMPLETED:
+                lines.append(f"#{i} [{t}] quest completed: {ev.text}")
             case EventType.BOSS_DEFEATED | EventType.ENEMY_DEFEATED:
                 fight = fights.get(i)
                 if fight is None:

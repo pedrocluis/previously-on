@@ -267,9 +267,10 @@ function clock(t) {
 // --- sessions -----------------------------------------------------------------
 
 function outcome(b) {
-  return b.defeated
-    ? `<span class="outcome felled">Felled <span class="n">· ${b.attempts} ${b.attempts === 1 ? 'try' : 'tries'}</span></span>`
-    : `<span class="outcome standing">Still standing <span class="n">· ${plural(b.attempts, 'death')}</span></span>`;
+  if (b.defeated) return `<span class="outcome felled">Felled <span class="n">· ${b.attempts} ${b.attempts === 1 ? 'try' : 'tries'}</span></span>`;
+  // A game with no defeat banner (The Witcher 3): the log cannot say how it ended.
+  if (b.closed === false) return `<span class="outcome">Fought <span class="n">· ${plural(b.attempts, 'death')}</span></span>`;
+  return `<span class="outcome standing">Still standing <span class="n">· ${plural(b.attempts, 'death')}</span></span>`;
 }
 
 async function renderSessions() {
@@ -359,7 +360,7 @@ async function renderTimeline() {
         <div class="when"><span class="ep">Episode ${s.episode}</span><a href="#session/${esc(s.session)}">${esc(day)}</a><span>${esc(s.duration)} · ${plural(s.deaths, 'death')}</span><span>${esc(time)}</span></div>
         <div>
           ${s.summary ? `<p class="gist">${esc(s.summary)}</p>` : ''}
-          <ul class="moments">${s.moments.map(m => `<li class="${esc(m.kind)}"><span class="t">${esc(m.at)}</span><span><span class="name">${esc(m.name)}</span>${m.detail ? `<span class="detail ${m.detail.startsWith('felled') ? 'felled' : ''}">${esc(m.detail)}</span>` : ''}</span></li>`).join('')}</ul>
+          <ul class="moments">${s.moments.map(m => `<li class="${esc(m.kind)}"><span class="t">${esc(m.at)}</span><span><span class="name">${esc(m.name)}</span>${m.detail ? `<span class="detail ${m.detail.startsWith('felled') || m.detail === 'completed' ? 'felled' : m.detail === 'fought' ? 'plain' : ''}">${esc(m.detail)}</span>` : ''}</span></li>`).join('')}</ul>
           ${s.item_names.length ? `<details><summary>${plural(s.items, 'item')}${s.checkpoints ? ` · ${plural(s.checkpoints, 'checkpoint')}` : ''}</summary><ul>${s.item_names.map(i => `<li>${esc(i)}</li>`).join('')}</ul></details>` : ''}
         </div>
       </div>`;
@@ -405,8 +406,8 @@ async function showCard() {
 // --- search -----------------------------------------------------------------------
 
 async function renderSearch() {
-  const kinds = ['item', 'area', 'checkpoint', 'boss', 'npc'];
-  const names = {item: 'items', area: 'places', checkpoint: 'checkpoints', boss: 'bosses', npc: 'people'};
+  const kinds = ['item', 'area', 'checkpoint', 'boss', 'quest', 'npc'];
+  const names = {item: 'items', area: 'places', checkpoint: 'checkpoints', boss: 'bosses', quest: 'quests', npc: 'people'};
   main.innerHTML = `<p class="eyebrow">Where did I get that · who said that · where was that</p>
     <form class="search" id="search-form"><input type="text" id="q" placeholder="an item, a place, a boss…" autofocus><button class="primary">Search</button></form>
     <div class="filters kinds">${kinds.map(k => `<label><input type="checkbox" value="${k}" checked><span>${names[k]}</span></label>`).join('')}</div>

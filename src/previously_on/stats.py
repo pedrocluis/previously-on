@@ -28,7 +28,7 @@ the kill on the wrong boss in 5 of that game's 15 defeats.
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 
 from rapidfuzz import fuzz
 
@@ -50,6 +50,10 @@ class BossStat:
     attempts: int
     defeated: bool
     phases: list[str] = field(default_factory=list)  # other bar names seen during the fight
+    # False when the game never announces a defeat (``closes_fights`` on the
+    # profile) and the fight was not closed: the outcome is unknown, not
+    # "still standing". Always True for a felled boss.
+    closed: bool = True
 
 
 @dataclass(slots=True)
@@ -61,23 +65,38 @@ class SessionStats:
     areas: list[str] = field(default_factory=list)
     items: int = 0
     dialogue_lines: int = 0
+    # Quest names in the order they were completed, OCR variants folded.
+    # Empty for a game without a quest journal.
+    quests_completed: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict:
         return asdict(self)
 
     @classmethod
     def from_json(cls, d: dict) -> SessionStats:
-        return cls(**{**d, "bosses": [BossStat(**b) for b in d.get("bosses", [])]})
+        # Unknown keys are dropped both ways: the website stores to_json()
+        # rows and reads them with whatever version it is pinned to, so a
+        # field added later (quests_completed, BossStat.closed) must not
+        # break a reader that predates it.
+        known = {f.name for f in fields(cls)} - {"bosses"}
+        boss_keys = {f.name for f in fields(BossStat)}
+        return cls(
+            **{k: v for k, v in d.items() if k in known},
+            bosses=[BossStat(**{k: v for k, v in b.items() if k in boss_keys}) for b in d.get("bosses", [])],
+        )
 
     @property
     def current_boss(self) -> BossStat | None:
-        """The boss still standing at the end of the session, if any."""
-        if self.bosses and not self.bosses[-1].defeated:
+        """The boss still standing at the end of the session, if any. A fight
+        whose outcome the game never shows is not one."""
+        if self.bosses and not self.bosses[-1].defeated and self.bosses[-1].closed:
             return self.bosses[-1]
         return None
 
 
-def compute(events: list[Event], duration: float | None = None) -> SessionStats:
+def compute(events: list[Event], duration: float | None = None, closes_fights: bool = True) -> SessionStats:
+    """``closes_fights`` is the session's (``SessionMeta.closes_fights``): False
+    for a game with no defeat banner, whose fights end with no outcome."""
     if duration is None:
         duration = events[-1].t_rel if events else 0.0
     stats = SessionStats(duration=duration, deaths=0)
@@ -95,7 +114,7 @@ def compute(events: list[Event], duration: float | None = None) -> SessionStats:
                     same_name(ev.text, current_name) or any(same_name(ev.text, p) for p in phases)
                 )
                 if current_name is not None and not known and moved_on:
-                    stats.bosses.append(BossStat(current_name, deaths_since_defeat, False, phases))
+                    stats.bosses.append(BossStat(current_name, deaths_since_defeat, False, phases, closes_fights))
                     current_name, phases, deaths_since_defeat = None, [], 0
                 if current_name is None:
                     current_name = ev.text
@@ -136,9 +155,12 @@ def compute(events: list[Event], duration: float | None = None) -> SessionStats:
                 stats.items += 1
             case EventType.DIALOGUE:
                 stats.dialogue_lines += 1
+            case EventType.QUEST_COMPLETED:
+                if not any(same_name(ev.text, q) for q in stats.quests_completed):
+                    stats.quests_completed.append(ev.text)
 
     if current_name is not None:
-        stats.bosses.append(BossStat(current_name, deaths_since_defeat, False, phases))
+        stats.bosses.append(BossStat(current_name, deaths_since_defeat, False, phases, closes_fights))
     return stats
 
 
@@ -178,7 +200,10 @@ def summary_line(stats: SessionStats) -> str:
         parts.append(f"{boss.name} still standing")
     elif stats.bosses:
         last = stats.bosses[-1]
-        parts.append(f"{last.name} felled in {last.attempts} {'try' if last.attempts == 1 else 'tries'}")
+        if last.defeated:
+            parts.append(f"{last.name} felled in {last.attempts} {'try' if last.attempts == 1 else 'tries'}")
+        else:
+            parts.append(f"fought {last.name}")
     return " · ".join(parts)
 
 

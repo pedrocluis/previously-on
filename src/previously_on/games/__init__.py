@@ -39,6 +39,12 @@ class GameProfile(Protocol):
     # A few lines for the recap model on how this game's events read (what a
     # checkpoint is called, that subtitles carry no speaker name). Missing = "".
     recap_notes: str
+    # Optional, read with getattr (not declared here: the watcher and the
+    # API tell one profile from a list with isinstance, which would then
+    # demand it of every profile) — ``closes_fights = False`` for a game that
+    # never announces a boss's defeat (The Witcher 3: the bar just goes).
+    # The session log records it and stats call an unclosed fight's outcome
+    # unknown instead of "still standing". Missing = True.
 
     def classify(
         self, region: Region, lines: list[OcrLine], frame: np.ndarray | None = None
@@ -61,12 +67,13 @@ class GameProfile(Protocol):
 
 def _profiles() -> dict[str, GameProfile]:
     from .eldenring import EldenRingProfile
+    from .witcher3 import Witcher3Profile
     from .sekiro import SekiroProfile
     from .ds2 import Ds2Profile
     from .ds3 import Ds3Profile
     from .dsr import DsrProfile
 
-    return {p.id: p for p in (EldenRingProfile(), DsrProfile(), Ds3Profile(), Ds2Profile(), SekiroProfile(),)}
+    return {p.id: p for p in (EldenRingProfile(), DsrProfile(), Ds3Profile(), Ds2Profile(), SekiroProfile(), Witcher3Profile(),)}
 
 
 def list_profiles() -> list[GameProfile]:

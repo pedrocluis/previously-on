@@ -214,3 +214,39 @@ def test_a_felled_boss_does_not_lend_its_tries_to_a_namesake():
 
     out = across_sessions([BossStat("Night's Cavalry", 3, True), BossStat("Night's Cavalry", 1, True)])
     assert [f.attempts for f in out] == [3, 1]
+
+
+def test_a_game_without_defeat_banners_leaves_the_outcome_unknown():
+    # The Witcher 3: the Royal Griffin's bar just goes when it dies.
+    events = [ev(10, EventType.BOSS_ENGAGED, "Royal Griffin"), ev(60, EventType.DEATH)]
+    s = compute(events, duration=600, closes_fights=False)
+    assert s.current_boss is None
+    assert [(b.name, b.attempts, b.defeated, b.closed) for b in s.bosses] == [("Royal Griffin", 1, False, False)]
+    assert summary_line(s) == "10m · 1 death · fought Royal Griffin"
+    # The same log from a game that does announce defeats: still standing.
+    assert "Royal Griffin still standing" in summary_line(compute(events, duration=600))
+
+
+def test_stats_json_ignores_keys_it_does_not_know():
+    from previously_on.stats import SessionStats
+
+    d = compute([ev(10, EventType.BOSS_ENGAGED, "Royal Griffin")], closes_fights=False).to_json()
+    d["from_a_later_version"] = 1
+    d["bosses"][0]["also_later"] = True
+    back = SessionStats.from_json(d)
+    assert back.bosses[0].closed is False and back.bosses[0].name == "Royal Griffin"
+    # And a row written before `closed` and `quests_completed` existed.
+    old = {"duration": 5.0, "deaths": 0, "bosses": [{"name": "Bayle", "attempts": 1, "defeated": False, "phases": []}]}
+    assert SessionStats.from_json(old).bosses[0].closed is True
+
+
+def test_closes_fights_travels_in_the_session_log(tmp_path):
+    from previously_on.session import SessionLog, read_session
+
+    log = SessionLog.open("witcher3", "video", data_dir=tmp_path, closes_fights=False)
+    log.close()
+    assert read_session(log.path)[0].closes_fights is False
+    log = SessionLog.open("eldenring", "video", data_dir=tmp_path, started=datetime(2026, 1, 1))
+    log.close()
+    assert "closes_fights" not in log.path.read_text()  # other games' logs are unchanged
+    assert read_session(log.path)[0].closes_fights is True

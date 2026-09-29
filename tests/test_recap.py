@@ -320,3 +320,27 @@ def test_cli_recap_and_search_offline(tmp_path, eldenring, capsys, monkeypatch):
 def test_cli_recap_without_records(tmp_path, capsys):
     assert main(["recap", "--data-dir", str(tmp_path)]) == 1
     assert "no recap yet" in capsys.readouterr().err
+
+
+def test_quests_reach_the_transcript_the_stats_and_the_index():
+    events = [
+        ev(10, E.QUEST_STARTED, "Twisted Firestarter"),
+        ev(20, E.QUEST_UPDATED, "Twisted Firestarter"),
+        ev(30, E.QUEST_COMPLETED, "Twisted Firestarter"),
+        ev(31, E.QUEST_COMPLETED, "Twisted Firestarte"),  # an OCR variant of the same notice
+        ev(40, E.QUEST_UPDATED, "Lilac and Gooseberries"),
+    ]
+    txt = compact(meta(), events)
+    assert "#0 [0:00:10] quest started: Twisted Firestarter" in txt
+    assert "#1 [0:00:20] quest updated: Twisted Firestarter" in txt
+    assert "#2 [0:00:30] quest completed: Twisted Firestarter" in txt
+    from previously_on.stats import compute
+
+    assert compute(events).quests_completed == ["Twisted Firestarter"]
+    entries = index_mod._entries_from_events("s", datetime(2026, 9, 16), events, 60.0)
+    # Starts and completions are searchable; updates would flood a search.
+    assert [(e.kind, e.name, e.detail) for e in entries] == [
+        ("quest", "Twisted Firestarter", "started"),
+        ("quest", "Twisted Firestarter", "completed"),
+        ("quest", "Twisted Firestarte", "completed"),
+    ]

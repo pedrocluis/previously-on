@@ -21,7 +21,17 @@ class EventType(StrEnum):
     AREA_DISCOVERED = "area_discovered"
     ITEM_ACQUIRED = "item_acquired"
     DIALOGUE = "dialogue"
+    # Quest journals (The Witcher 3 announces "NEW QUEST", "QUEST UPDATED!"
+    # and "QUEST COMPLETED!" over the quest's name). The text is the quest
+    # name, never the phrase.
+    QUEST_STARTED = "quest_started"
+    QUEST_UPDATED = "quest_updated"
+    QUEST_COMPLETED = "quest_completed"
 
+
+# A game without a quest journal never logs these, so its profile need not
+# give them a cooldown.
+QUEST_TYPES = frozenset({EventType.QUEST_STARTED, EventType.QUEST_UPDATED, EventType.QUEST_COMPLETED})
 
 # Fixed-position, high-contrast HUD announcements. These must be precise;
 # dialogue is allowed to be lossy.
@@ -32,6 +42,9 @@ BANNER_TYPES = frozenset(
         EventType.ENEMY_DEFEATED,
         EventType.CHECKPOINT_DISCOVERED,
         EventType.AREA_DISCOVERED,
+        EventType.QUEST_STARTED,
+        EventType.QUEST_UPDATED,
+        EventType.QUEST_COMPLETED,
     }
 )
 

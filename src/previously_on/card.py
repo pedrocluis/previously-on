@@ -90,7 +90,7 @@ def gather(game: str, data_dir: Path | None) -> Playthrough:
     sessions = []
     for log in logs:
         meta, events = read_session(log)
-        sessions.append((meta, compute(events, duration=meta.duration)))
+        sessions.append((meta, compute(events, duration=meta.duration, closes_fights=meta.closes_fights)))
     return gather_stats(game, sessions)
 
 
@@ -116,7 +116,7 @@ def gather_stats(game: str, sessions: list[tuple[SessionMeta, SessionStats]]) ->
 
 
 def boss_json(b: BossStat) -> dict:
-    return {"name": b.name, "attempts": b.attempts, "defeated": b.defeated, "phases": list(b.phases)}
+    return {"name": b.name, "attempts": b.attempts, "defeated": b.defeated, "closed": b.closed, "phases": list(b.phases)}
 
 
 def totals(p: Playthrough) -> dict:

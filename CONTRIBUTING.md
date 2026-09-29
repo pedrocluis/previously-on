@@ -129,8 +129,11 @@ loading screen for negatives. In the report, look for:
 
 Only the existing `EventType`s: `death`, `boss_engaged`, `boss_defeated`,
 `enemy_defeated`, `checkpoint_discovered`, `area_discovered`,
-`item_acquired`, `dialogue`. A game without item pickups has no item
-region. A new event type is a product change (stats, search, the recap
+`item_acquired`, `dialogue`, and for a game with a quest journal
+`quest_started`, `quest_updated`, `quest_completed` (the text is the quest's
+name). A game without item pickups has no item region. A game that never
+announces a boss's defeat sets `closes_fights = False` on its profile, so
+its fights are "fought" rather than "still standing". A new event type is a product change (stats, search, the recap
 prompt and the app all switch on the enum) — open an issue first.
 
 ### 4. Scaffold
