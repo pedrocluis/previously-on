@@ -14,6 +14,10 @@
 ; the installer asks it to quit (`PreviouslyOn.exe --quit`: the session log
 ; gets its end, a recap in flight its grace) and only then kills whatever is
 ; still running from the install folder.
+;
+; Run over an installed copy, setup is an update: it skips the tasks page
+; (the previous choices stand), says which version it replaces, and leaves
+; the start-at-sign-in value to the app, which owns that switch.
 
 #ifndef AppVersion
   #error Pass the version: iscc /DAppVersion=X.Y.Z packaging/installer.iss
@@ -24,6 +28,8 @@
 #define RunKey "Software\Microsoft\Windows\CurrentVersion\Run"
 ; autostart.VALUE_NAME: the app reads and rewrites the same value.
 #define RunValue "PreviouslyOn"
+; Inno Setup's uninstall entry for the AppId below (non-admin: under HKCU).
+#define UninstallKey "Software\Microsoft\Windows\CurrentVersion\Uninstall\{6B0E5C1A-4F3D-4C7E-9A61-2F5D8E3B7C49}_is1"
 
 [Setup]
 ; Never change the AppId: it is how an upgrade finds the installed copy.
@@ -38,7 +44,9 @@ PrivilegesRequired=lowest
 DefaultDirName={autopf}\PreviouslyOn
 DisableProgramGroupPage=yes
 DisableDirPage=auto
-DisableReadyPage=yes
+; Shown only for an update (ShouldSkipPage): a fresh install goes from the
+; tasks page straight to installing.
+DisableReadyPage=no
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
@@ -74,6 +82,67 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 Filename: "{app}\{#AppExe}"; Description: "Open {#AppName}"; Flags: nowait postinstall skipifsilent
 
 [Code]
+var
+  { The installed copy's version, empty on a fresh install. }
+  PreviousVersion: String;
+
+function InitializeSetup(): Boolean;
+begin
+  if not RegQueryStringValue(HKCU, '{#UninstallKey}', 'DisplayVersion', PreviousVersion) then
+    PreviousVersion := '';
+  Result := True;
+end;
+
+function IsUpdate(): Boolean;
+begin
+  Result := PreviousVersion <> '';
+end;
+
+function UpdateVerb(): String;
+begin
+  if PreviousVersion = '{#AppVersion}' then
+    Result := 'reinstall'
+  else
+    Result := 'update';
+end;
+
+procedure InitializeWizard();
+begin
+  if IsUpdate() then
+    WizardForm.Caption := '{#AppName} ' + '{#AppVersion}' + ' ' + UpdateVerb();
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := ((PageID = wpSelectTasks) and IsUpdate()) or
+            ((PageID = wpReady) and not IsUpdate());
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpSelectTasks) and not IsUpdate() then
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
+  if (CurPageID = wpReady) and IsUpdate() then
+  begin
+    WizardForm.PageNameLabel.Caption := 'Ready to ' + UpdateVerb();
+    WizardForm.PageDescriptionLabel.Caption := '{#AppName} ' + PreviousVersion + ' is installed.';
+    if UpdateVerb() = 'update' then
+      WizardForm.ReadyLabel.Caption := 'Setup will update it to version {#AppVersion}.'
+    else
+      WizardForm.ReadyLabel.Caption := 'Setup will reinstall the same version.';
+    WizardForm.ReadyLabel.Caption := WizardForm.ReadyLabel.Caption + #13#10#13#10 +
+      'Your sessions, recaps and settings are kept. If {#AppName} is running, it is closed first and its session saved.';
+    WizardForm.ReadyMemo.Visible := False;
+    if UpdateVerb() = 'update' then
+      WizardForm.NextButton.Caption := '&Update';
+  end;
+  if (CurPageID = wpFinished) and IsUpdate() then
+  begin
+    WizardForm.FinishedHeadingLabel.Caption := '{#AppName} is up to date';
+    WizardForm.FinishedLabel.Caption := 'Version {#AppVersion} is installed.';
+  end;
+end;
+
 function AppExePath(): String;
 begin
   Result := ExpandConstant('{app}\{#AppExe}');
@@ -114,8 +183,9 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   { Unticked leaves the value alone: the player may have turned it on in the
-    app since the last install, and the app owns that switch. }
-  if (CurStep = ssPostInstall) and WizardIsTaskSelected('startup') then
+    app since the last install, and the app owns that switch. An update never
+    touches it: the player may have turned it off since. }
+  if (CurStep = ssPostInstall) and not IsUpdate() and WizardIsTaskSelected('startup') then
     RegWriteStringValue(HKCU, '{#RunKey}', '{#RunValue}', RunCommand());
 end;
 

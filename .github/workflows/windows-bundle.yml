@@ -154,7 +154,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
           $p = Launch
+          # Turned off in the app since the install: /TASKS=startup must not
+          # turn it back on, an update leaves the switch to the app.
+          Remove-ItemProperty $run -Name PreviouslyOn
           Setup upgrade
+          if ((Get-ItemProperty $run).PreviouslyOn) { Write-Error "the upgrade rewrote the Run value"; exit 1 }
           # Exit code 0 is a clean quit; the installer's fallback kill is not.
           if (-not $p.HasExited) { Write-Error "the upgrade left the old copy running"; exit 1 }
           if ($p.ExitCode -ne 0 -or -not (Select-String -Path $log -Pattern 'asked to quit by another copy' -Quiet)) {
