@@ -203,6 +203,7 @@ function renderFirstRun(f) {
     <div class="first"><ol>
       <li><span><strong>Frames never leave this machine.</strong> The screen is read here and thrown away. Areas, bosses, deaths, pickups and dialogue are logged as plain text on this PC.</span></li>
       <li><span>${key} Only the text log is sent, once per session, to the model you pick. Never a frame.</span></li>
+      <li><span><strong>It logs from now on.</strong> Best started with a playthrough; partway through one, the first recap only knows what it saw from today.</span></li>
       <li><span><strong>Leave it running.</strong> ${stay}${auto}</span></li>
     </ol></div>
     <div id="feed"></div>`;
@@ -223,8 +224,8 @@ async function renderHome() {
       <hr class="rule">
       <div class="first"><ol>
         <li><span><strong>Start the game.</strong> This window notices it and starts watching the screen.</span></li>
-        <li><span><strong>Play.</strong> Areas, bosses, deaths, pickups and dialogue are logged as the game announces them. Frames never leave this machine.</span></li>
-        <li><span><strong>Come back whenever.</strong> This page tells you where you left off — stats offline, a written recap with an API key in <a href="#settings">Settings</a>.</span></li>
+        <li><span><strong>Play.</strong> Areas, bosses, deaths, pickups and dialogue are logged as the game announces them, from now on. Frames never leave this machine.</span></li>
+        <li><span><strong>Come back whenever.</strong> This page shows your last session, and after a break it tells you where you left off: stats offline, a written recap with a key or a previouslyon.gg sign-in in <a href="#settings">Settings</a>.</span></li>
       </ol></div>
       <div id="feed"></div>`;
     renderFeed();
@@ -264,6 +265,7 @@ async function renderHome() {
     <h1><span class="pre">Previously on</span>${gameTitle(h.game, '…')}</h1>
     <hr class="rule">
     <div class="page-grid"><div>${recap}${notice}</div>${margin}</div>
+    ${h.tier === 'one_line' ? lastSession(h) : ''}
     <div id="feed"></div>`;
   const link = document.getElementById('show-full');
   if (link) link.onclick = () => { document.getElementById('full').hidden = false; link.remove(); };
@@ -274,6 +276,20 @@ async function renderHome() {
     if (r.error) { btn.disabled = false; btn.textContent = 'Write it now'; showError(btn.closest('.row'), r.error); }
   };
   renderFeed();
+  const whole = document.getElementById('whole-run');
+  if (whole) call('totals').then(t => { if (!t.error && t.line) whole.textContent = t.line; });
+}
+
+// Played recently: the recap is one line, so show what the last session held
+// (the fights, the places) and the way into the rest of the playthrough.
+function lastSession(h) {
+  const counts = [plural(h.items, 'item'), h.checkpoints ? plural(h.checkpoints, 'checkpoint') : '', h.dialogue_lines ? plural(h.dialogue_lines, 'line') + ' of dialogue' : '']
+    .filter(Boolean).join(' · ');
+  return `<section class="last-session"><h2>Last session</h2>
+    ${h.bosses.length ? `<ul class="ledger fights">${h.bosses.map(b => `<li><span class="name">${esc(b.name)}${b.phases.length ? `<span class="phases">also ${b.phases.map(esc).join(', ')}</span>` : ''}</span>${outcome(b)}</li>`).join('')}</ul>` : ''}
+    ${h.areas.length ? `<p class="places">${h.areas.map(a => `<span>${esc(a)}</span>`).join('')}</p>` : ''}
+    <p class="hint">${counts}</p>
+    <p class="row"><a href="#session/${esc(h.session)}">Everything from episode ${h.episode}</a>${sep()}<a href="#timeline">The whole playthrough</a> <span class="hint" id="whole-run"></span></p></section>`;
 }
 
 async function renderFeed() {

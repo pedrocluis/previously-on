@@ -2,8 +2,10 @@
 
 Passive session memory for long single-player games. It watches the screen,
 reads the announcements the game already makes (`YOU DIED`, `GREAT ENEMY
-FELLED`, item popups, area names, subtitles) and logs them so that when you
-come back after a month you can be told where you left off.
+FELLED`, item popups, area names, subtitles) and logs them as you play: a
+timeline, death counts and a search over the whole run, and, when you come
+back after a break, where you left off. It logs from the moment it is
+installed, so start it with a playthrough.
 
 Website and download: **[previouslyon.gg](https://previouslyon.gg)**
 
