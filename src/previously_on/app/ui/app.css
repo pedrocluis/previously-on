@@ -73,6 +73,16 @@ nav a.active::before { content: ""; position: absolute; left: 0; top: 7px; botto
   background-position: right 5px center, right 0 center; background-size: 5px 5px; background-repeat: no-repeat; }
 .game-pick select:hover { border-bottom-color: var(--accent-deep); }
 .game-pick option { background: var(--raise); color: var(--text); font-weight: 400; }
+.run-pick { margin-top: 16px; }
+.run-pick select { font-size: 13px; font-weight: 500; }
+
+/* Playthroughs page. */
+.runs .name { font-weight: 650; color: var(--text); }
+.runs .meta { font-size: 12.5px; color: var(--faint); }
+.runs .row { gap: 10px; flex-wrap: wrap; }
+.runs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line-soft); }
+.move-to { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; font-size: 13.5px; color: var(--dim); }
+.move-to select { background: var(--raise); color: var(--text); border: 1px solid var(--edge); border-radius: 3px; padding: 6px 8px; font: inherit; }
 
 .watch { margin-top: auto; padding: 16px 22px 0; border-top: 1px solid var(--line-soft); }
 .watch .state { display: flex; align-items: baseline; gap: 9px; }

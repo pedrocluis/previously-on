@@ -24,6 +24,7 @@ from ..games import GameProfile
 from ..pipeline import Detector
 from ..recap.schema import RecapRecord
 from ..recap.store import session_id, summarize_after_run
+from ..playthroughs import Registry
 from ..session import SessionLog
 
 State = str  # idle | waiting | capturing | summarizing | error
@@ -199,7 +200,11 @@ class Watcher:
             lower_priority()
         source = self.source_factory()
         log = SessionLog.open(
-            profile.id, source.name, data_dir=self.data_dir, closes_fights=getattr(profile, "closes_fights", True)
+            profile.id,
+            source.name,
+            data_dir=self.data_dir,
+            closes_fights=getattr(profile, "closes_fights", True),
+            **Registry.load(profile.id, self.data_dir).tag(),  # the playthrough the player is on
         )
         print(f"session log: {log.path}", file=sys.stderr)
         self.recent.clear()

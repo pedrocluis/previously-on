@@ -49,6 +49,9 @@ def is_open(log: Path, now: float | None = None) -> bool:
     with log.open("rb") as fh:
         fh.seek(max(0, log.stat().st_size - 4096))
         tail = fh.read().decode("utf-8", "replace").strip().splitlines()
+    # A move to another playthrough appends a line after the end.
+    while tail and '"kind": "playthrough"' in tail[-1]:
+        tail.pop()
     if tail and '"session_end"' in tail[-1]:
         return False
     return (now or time.time()) - log.stat().st_mtime < OPEN_GRACE
