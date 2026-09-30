@@ -21,6 +21,8 @@ from pathlib import Path
 from .. import card as card_mod
 from .. import export as export_mod
 from ..games import GameProfile
+from ..playthroughs import Registry
+from ..session import move_session
 from ..recap.store import sessions_dir, summarize_after_run
 from ..session import default_data_dir
 from . import views
@@ -96,6 +98,60 @@ class Api:
         self._selected = game
         return {"current": game}
 
+    # --- which playthrough ---------------------------------------------------
+    # The screens show the game's current playthrough, and the next capture
+    # of that game goes to it: switching is saying "I'm playing this one now".
+
+    def playthroughs(self) -> dict:
+        return self._guard(lambda: views.playthroughs(self._profile().id, self._data_dir))
+
+    def _change_playthroughs(self, change) -> dict:
+        def run():
+            reg = Registry.load(self._profile().id, self._data_dir)
+            change(reg)
+            reg.save()
+            return views.playthroughs(reg.game, self._data_dir)
+
+        try:
+            return run()
+        except (KeyError, ValueError) as exc:
+            return {"error": str(exc.args[0] if exc.args else exc)}
+        except OSError as exc:
+            return {"error": f"could not save the playthroughs: {exc}"}
+
+    def select_playthrough(self, pid: str) -> dict:
+        return self._change_playthroughs(lambda reg: reg.select(pid))
+
+    def new_playthrough(self, name: str) -> dict:
+        return self._change_playthroughs(lambda reg: reg.create(name))
+
+    def new_game_plus(self, of: str) -> dict:
+        """A New Game+ cycle of ``of``, made current."""
+        return self._change_playthroughs(lambda reg: reg.new_game_plus(of))
+
+    def rename_playthrough(self, pid: str, name: str) -> dict:
+        return self._change_playthroughs(lambda reg: reg.rename(pid, name))
+
+    def delete_playthrough(self, pid: str) -> dict:
+        return self._change_playthroughs(lambda reg: reg.delete(pid))
+
+    def move_session(self, stamp: str, pid: str) -> dict:
+        """Move a finished session to another playthrough (the player forgot
+        to switch before playing). Its recap keeps the state it was written
+        with until it is rewritten."""
+
+        def move(reg: Registry) -> None:
+            target = reg.get(pid)
+            log = sessions_dir(reg.game, self._data_dir) / f"{stamp}.jsonl"
+            if not log.is_file():
+                raise KeyError(f"no session {stamp}")
+            move_session(log, target.id, target.name, target.cycle)
+
+        out = self._change_playthroughs(move)
+        if "error" not in out and self._sync is not None:
+            self._sync.enqueue(self._profile().id)  # the log changed: upload it again
+        return out
+
     # --- screens -------------------------------------------------------------
 
     def home(self) -> dict:
@@ -149,7 +205,7 @@ class Api:
             play = card_mod.gather(p.id, self._data_dir)
             if not play.sessions:
                 return {"error": "nothing logged yet: the card needs at least one session"}
-            data = base64.b64encode(card_mod.png(play, p.display_name)).decode("ascii")
+            data = base64.b64encode(card_mod.png(play, self._card_name(p))).decode("ascii")
             return {
                 "png": f"data:image/png;base64,{data}",
                 "filename": card_mod.filename(p.id),
@@ -157,6 +213,15 @@ class Api:
             }
 
         return self._guard(load)
+
+    def _card_name(self, p: GameProfile) -> str:
+        """The game's name, and the playthrough's when there is more than one
+        (drawn as the card's subtitle: the part after ": ")."""
+        reg = Registry.load(p.id, self._data_dir)
+        if len(reg.all()) < 2:
+            return p.display_name
+        sep = " · " if ": " in p.display_name else ": "
+        return f"{p.display_name}{sep}{reg.current().label}"
 
     def save_card(self) -> dict:
         """Ask where to save the card and write it there."""
@@ -171,7 +236,7 @@ class Api:
                 return {"cancelled": True}
             if path.suffix.lower() != ".png":
                 path = path.with_name(path.name + ".png")
-            path.write_bytes(card_mod.png(play, p.display_name))
+            path.write_bytes(card_mod.png(play, self._card_name(p)))
             return {"saved": str(path)}
 
         return self._guard(save)

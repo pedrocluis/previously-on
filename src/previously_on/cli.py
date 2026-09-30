@@ -16,6 +16,10 @@ def _add_game_arg(p: argparse.ArgumentParser) -> None:
     p.add_argument("--game", default=DEFAULT_GAME, help=f"game profile id (default: {DEFAULT_GAME})")
 
 
+def _add_playthrough_arg(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--playthrough", metavar="ID", help="which playthrough (default: the game's current one; see `playthroughs`)")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="previously-on", description="Passive session memory for long games.")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -35,6 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--start", type=float, default=0.0, help="video: start at this many seconds")
     run.add_argument("--duration", type=float, help="video: stop after this many seconds")
     run.add_argument("--out", type=Path, help="data directory (default: platform user data dir)")
+    _add_playthrough_arg(run)
     run.add_argument("--wait-for-game", action="store_true", help="start when the game process appears, stop when it exits")
     run.add_argument("-v", "--verbose", action="store_true", help="print raw OCR lines")
     run.add_argument(
@@ -87,18 +92,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     rc = sub.add_parser("recap", help="show the gap-scaled recap for the latest session (no network)")
     _add_game_arg(rc)
+    _add_playthrough_arg(rc)
     rc.add_argument("--data-dir", type=Path, help="data directory (default: platform user data dir)")
     rc.add_argument("--as-of", help="pretend today is this date (YYYY-MM-DD) to see another tier")
     rc.add_argument("--tier", choices=["one_line", "short", "full"], help="force a tier")
 
     se = sub.add_parser("search", help="find an item, place, boss or NPC across all sessions")
     _add_game_arg(se)
+    _add_playthrough_arg(se)
     se.add_argument("query")
     se.add_argument("--data-dir", type=Path)
     se.add_argument("--kind", choices=["item", "area", "checkpoint", "boss", "npc"], action="append")
 
     cd = sub.add_parser("card", help="draw the share card for the whole playthrough (a PNG, no network)")
     _add_game_arg(cd)
+    _add_playthrough_arg(cd)
     cd.add_argument("--data-dir", type=Path)
     cd.add_argument("--out", type=Path, help="where to write it (default: previously-on-<game>-<date>.png here)")
     cd.add_argument("--no-names", action="store_true", help="hide boss names, as under the website's spoiler guard")
@@ -131,6 +139,26 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--duration", type=float, help="video: stop after this many seconds")
     ap.add_argument("--debug", action="store_true", help="open the webview developer tools")
 
+    pt = sub.add_parser("playthroughs", help="list, add (a new character or New Game+), switch, rename or move playthroughs")
+    _add_game_arg(pt)
+    pt.add_argument("--data-dir", type=Path)
+    pt_sub = pt.add_subparsers(dest="action")
+    pt_sub.add_parser("list", help="every playthrough of the game (the default action)")
+    pt_new = pt_sub.add_parser("new", help="start a new playthrough (a new character) and make it current")
+    pt_new.add_argument("name")
+    pt_ng = pt_sub.add_parser("ng-plus", help="start a New Game+ cycle of a playthrough and make it current")
+    pt_ng.add_argument("id", nargs="?", help="the playthrough it continues (default: the current one)")
+    pt_sw = pt_sub.add_parser("switch", help="make a playthrough current: the next capture goes to it")
+    pt_sw.add_argument("id")
+    pt_rn = pt_sub.add_parser("rename")
+    pt_rn.add_argument("id")
+    pt_rn.add_argument("name")
+    pt_rm = pt_sub.add_parser("delete", help="delete an empty playthrough")
+    pt_rm.add_argument("id")
+    pt_mv = pt_sub.add_parser("move", help="move a finished session to another playthrough")
+    pt_mv.add_argument("session", help="session stamp (YYYYMMDD-HHMMSS)")
+    pt_mv.add_argument("id")
+
     sub.add_parser("games", help="list available game profiles")
     sub.add_parser("check", help="check that OCR, capture and the window work on this machine (paste it into an issue)")
     return parser
@@ -161,8 +189,14 @@ def cmd_run(args: argparse.Namespace) -> int:
     source = open_source(
         args.source, args.path, fps=args.fps, monitor=args.monitor, seek=args.start, duration=args.duration
     )
+    from .playthroughs import Registry
+
     log = SessionLog.open(
-        profile.id, source.name, data_dir=args.out, closes_fights=getattr(profile, "closes_fights", True)
+        profile.id,
+        source.name,
+        data_dir=args.out,
+        closes_fights=getattr(profile, "closes_fights", True),
+        **Registry.load(profile.id, args.out).tag(args.playthrough),
     )
     print(f"session log: {log.path}", file=sys.stderr)
     if live:
@@ -358,7 +392,7 @@ def cmd_recap(args: argparse.Namespace) -> int:
     from .recap.store import latest_record
     from .session import read_session
 
-    found = latest_record(args.game, args.data_dir)
+    found = latest_record(args.game, args.data_dir, args.playthrough)
     if found is None:
         print("no recap yet — run `summarize` on a session log first", file=sys.stderr)
         return 1
@@ -377,7 +411,7 @@ def cmd_recap(args: argparse.Namespace) -> int:
 def cmd_search(args: argparse.Namespace) -> int:
     from .recap.index import build, format_hits, search
 
-    index = build(args.game, args.data_dir)
+    index = build(args.game, args.data_dir, args.playthrough)
     hits = search(index, args.query, set(args.kind) if args.kind else None)
     print(format_hits(hits))
     return 0 if hits else 1
@@ -386,7 +420,7 @@ def cmd_search(args: argparse.Namespace) -> int:
 def cmd_card(args: argparse.Namespace) -> int:
     from . import card
 
-    play = card.gather(args.game, args.data_dir)
+    play = card.gather(args.game, args.data_dir, args.playthrough)
     if not play.sessions:
         print(f"no sessions logged for {args.game}", file=sys.stderr)
         return 1
@@ -442,6 +476,41 @@ def cmd_app(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_playthroughs(args: argparse.Namespace) -> int:
+    from .playthroughs import Registry, ng_suffix
+    from .session import move_session, sessions_dir
+
+    reg = Registry.load(args.game, args.data_dir)
+    action = args.action or "list"
+    try:
+        if action == "new":
+            reg.create(args.name)
+        elif action == "ng-plus":
+            reg.new_game_plus(args.id or reg.current_id)
+        elif action == "switch":
+            reg.select(args.id)
+        elif action == "rename":
+            reg.rename(args.id, args.name)
+        elif action == "delete":
+            reg.delete(args.id)
+        elif action == "move":
+            target = reg.get(args.id)
+            log = sessions_dir(args.game, args.data_dir) / f"{args.session}.jsonl"
+            if not log.is_file():
+                raise KeyError(f"no session {args.session}")
+            move_session(log, target.id, target.name, target.cycle)
+        if action != "list":
+            reg.save()
+    except (KeyError, ValueError) as exc:
+        print(exc.args[0] if exc.args else exc, file=sys.stderr)
+        return 1
+    for row in reg.rows():
+        mark = "*" if row["current"] else " "
+        ng = f"  [{ng_suffix(row['cycle'])}]" if row["cycle"] else ""
+        print(f"{mark} {row['id']:16s} {row['label']}{ng}  ({row['sessions']} session{'' if row['sessions'] == 1 else 's'})")
+    return 0
+
+
 def cmd_games(_: argparse.Namespace) -> int:
     for p in list_profiles():
         print(f"{p.id:12s} {p.display_name}  (process: {', '.join(p.process_names)})")
@@ -470,6 +539,7 @@ def main(argv: list[str] | None = None) -> int:
         "card": cmd_card,
         "export": cmd_export,
         "app": cmd_app,
+        "playthroughs": cmd_playthroughs,
         "games": cmd_games,
         "check": cmd_check,
     }[args.command]

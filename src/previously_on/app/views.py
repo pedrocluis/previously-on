@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .. import card
 from ..events import Event, EventType
+from ..playthroughs import Registry
 from ..recap import index as index_mod
 from ..recap.gap import Tier, describe_gap, pick_tier, render
 from ..recap.schema import RecapRecord
@@ -19,12 +20,17 @@ from ..session import SessionMeta, read_session
 from ..stats import SessionStats, compute, format_duration, summary_line
 
 
-def list_logs(game: str, data_dir: Path | None) -> list[Path]:
-    """Session logs, oldest first (stamps sort chronologically)."""
+def list_logs(game: str, data_dir: Path | None, playthrough: str | None = None) -> list[Path]:
+    """One playthrough's session logs (the current one when not given),
+    oldest first (stamps sort chronologically)."""
+    reg = Registry.load(game, data_dir)
+    return reg.logs(playthrough or reg.current_id)
+
+
+def all_logs(game: str, data_dir: Path | None) -> list[Path]:
+    """Every playthrough's logs, oldest first."""
     directory = sessions_dir(game, data_dir)
-    if not directory.is_dir():
-        return []
-    return sorted(directory.glob("*.jsonl"))
+    return sorted(directory.glob("*.jsonl")) if directory.is_dir() else []
 
 
 def _record_for(log: Path) -> RecapRecord | None:
@@ -60,8 +66,8 @@ def _state(record: RecapRecord | None) -> dict | None:
 
 
 def _session_row(log: Path, meta: SessionMeta, events: list[Event], stats: SessionStats, record, episode: int) -> dict:
-    """One session as every screen shows it. ``episode`` is its place in the
-    game's logs, oldest first from 1 — the website numbers them the same way."""
+    """One session as every screen shows it. ``episode`` is its place in its
+    playthrough's logs, oldest first from 1."""
     return {
         "session": session_id(log),
         "episode": episode,
@@ -80,6 +86,7 @@ def _session_row(log: Path, meta: SessionMeta, events: list[Event], stats: Sessi
         "events": len(events),
         "has_recap": record is not None,
         "summary": record.recap.summary if record else None,
+        "playthrough": meta.playthrough,
     }
 
 
@@ -89,7 +96,7 @@ def games(profiles, data_dir: Path | None) -> list[dict]:
     profiles' order."""
     rows = []
     for p in profiles:
-        logs = list_logs(p.id, data_dir)
+        logs = all_logs(p.id, data_dir)
         rows.append(
             {"id": p.id, "name": p.display_name, "sessions": len(logs), "last": session_id(logs[-1]) if logs else None}
         )
@@ -103,6 +110,11 @@ def last_played(profiles, data_dir: Path | None) -> str | None:
 
 
 # --- screens ------------------------------------------------------------------
+
+
+def playthroughs(game: str, data_dir: Path | None) -> dict:
+    reg = Registry.load(game, data_dir)
+    return {"playthroughs": reg.rows(), "current": reg.current_id}
 
 
 def home(game: str, data_dir: Path | None, now: datetime | None = None) -> dict:
@@ -152,13 +164,14 @@ def sessions(game: str, data_dir: Path | None) -> list[dict]:
 
 
 def session(game: str, data_dir: Path | None, stamp: str) -> dict | None:
+    """Any playthrough's session: a link to one stays good after a switch."""
     log = sessions_dir(game, data_dir) / f"{stamp}.jsonl"
     if not log.is_file():
         return None
     meta, events = read_session(log)
     stats = compute(events, duration=meta.duration, closes_fights=meta.closes_fights)
     record = _record_for(log)
-    out = _session_row(log, meta, events, stats, record, list_logs(game, data_dir).index(log) + 1)
+    out = _session_row(log, meta, events, stats, record, list_logs(game, data_dir, meta.playthrough).index(log) + 1)
     out["event_list"] = [
         {"index": i, "at": _clock(ev.t_rel), "t_rel": ev.t_rel, "type": ev.type.value, "text": ev.text, "conf": ev.conf}
         for i, ev in enumerate(events)

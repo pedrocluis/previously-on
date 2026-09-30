@@ -5,6 +5,7 @@
 const main = document.getElementById('main');
 const watchBox = document.getElementById('watch');
 const gameSelect = document.getElementById('game');
+const runSelect = document.getElementById('playthrough');
 let lastStatus = null;
 let viewGame = null;  // the game the screens show (api picks it; see api.py)
 let pollTimer = null;
@@ -130,12 +131,41 @@ async function renderGames() {
   viewGame = r.current;
   gameSelect.innerHTML = r.games.map(g =>
     `<option value="${esc(g.id)}" ${g.id === r.current ? 'selected' : ''}>${esc(g.name)}${g.sessions ? ` (${g.sessions})` : ''}</option>`).join('');
+  await renderRuns();
+}
+
+// --- playthrough picker (rail) --------------------------------------------------------
+// One game can have several playthroughs (characters, New Game+ cycles). The
+// current one is what the screens show and where the next session goes.
+
+function ngLabel(cycle) { return cycle <= 3 ? 'NG' + '+'.repeat(cycle) : `NG+${cycle}`; }
+
+async function renderRuns() {
+  const r = await call('playthroughs');
+  if (r.error) return;
+  runSelect.innerHTML = r.playthroughs.map(p =>
+    `<option value="${esc(p.id)}" ${p.current ? 'selected' : ''}>${esc(p.label)}${p.sessions ? ` (${p.sessions})` : ''}</option>`).join('')
+    + '<option disabled>──────────</option><option value="#manage">New character or NG+…</option>';
+}
+
+runSelect.onchange = async () => {
+  if (runSelect.value === '#manage') { await renderRuns(); location.hash = '#playthroughs'; return; }
+  const r = await call('select_playthrough', runSelect.value);
+  if (r.error) { showError(runSelect.closest('label'), r.error); return; }
+  await afterRunChange();
+};
+
+// A switch changes every screen; a session page stays (it names its own playthrough).
+async function afterRunChange() {
+  await renderGames();
+  if (!location.hash.startsWith('#session/')) route();
 }
 
 gameSelect.onchange = async () => {
   const r = await call('select_game', gameSelect.value);
   if (r.error) { showError(gameSelect.closest('label'), r.error); return; }
   viewGame = r.current;
+  await renderRuns();
   // A session page belongs to the game it came from.
   if (location.hash.startsWith('#session/')) location.hash = '#sessions';
   else route();
@@ -326,6 +356,30 @@ async function renderSession(stamp) {
   document.getElementById('type-filter').onchange = draw;
   draw();
   document.getElementById('export').onclick = () => exportSession(stamp);
+  renderMoveTo(stamp, s.playthrough);
+}
+
+// Only when there is somewhere to move to.
+async function renderMoveTo(stamp, current) {
+  const r = await call('playthroughs');
+  if (r.error || r.playthroughs.length < 2) return;
+  const eyebrow = main.querySelector('.totals-sub');
+  if (!eyebrow) return;
+  const here = r.playthroughs.find(p => p.id === current);
+  const box = document.createElement('div');
+  box.className = 'move-to';
+  box.innerHTML = `<span>Playthrough: <strong>${esc(here ? here.label : current)}</strong></span>
+    <select id="move-to" aria-label="Move this session to another playthrough"><option value="">Move to…</option>
+    ${r.playthroughs.filter(p => p.id !== current).map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</select>`;
+  eyebrow.after(box);
+  const sel = box.querySelector('select');
+  sel.onchange = async () => {
+    if (!sel.value) return;
+    const res = await call('move_session', stamp, sel.value);
+    if (res.error) { showError(box, res.error); sel.value = ''; return; }
+    await renderGames();
+    renderSession(stamp);
+  };
 }
 
 async function exportSession(stamp) {
@@ -565,6 +619,52 @@ async function renderAccount() {
   });
 }
 
+// --- playthroughs -----------------------------------------------------------------------
+
+async function renderPlaythroughs() {
+  const r = await call('playthroughs');
+  if (r.error) { main.innerHTML = errorBox(r); return; }
+  const game = gameSelect.options[gameSelect.selectedIndex] ? gameSelect.options[gameSelect.selectedIndex].text.replace(/ \(\d+\)$/, '') : '';
+  const byId = Object.fromEntries(r.playthroughs.map(p => [p.id, p]));
+  main.innerHTML = `<p class="eyebrow">${esc(game)}</p>
+    <h1 class="small">Playthroughs</h1><hr class="rule">
+    <p class="fr-status">The screen can't tell your characters apart, so say which one you're playing. The current one is what these pages show, and the next session goes to it. Each has its own recap, timeline, search and share card.</p>
+    <ul class="runs ledger">${r.playthroughs.map(p => `<li data-id="${esc(p.id)}">
+      <span><span class="name">${esc(p.label)}</span>${p.current ? ' <span class="tag">playing</span>' : ''}
+        <span class="meta">${[p.cycle ? ngLabel(p.cycle) + (byId[p.follows] ? ` of ${esc(byId[p.follows].label)}` : '') : '', plural(p.sessions, 'session')].filter(Boolean).join(' · ')}</span></span>
+      <span class="row">
+        ${p.current ? '' : '<button type="button" data-act="select" class="primary">Play this one</button>'}
+        <button type="button" data-act="ng">Start New Game+</button>
+        <button type="button" data-act="rename">Rename</button>
+        ${p.id !== 'main' && !p.sessions ? '<button type="button" data-act="delete">Delete</button>' : ''}
+      </span></li>`).join('')}</ul>
+    <h2>New character</h2>
+    <form id="new-run" class="row"><input type="text" id="new-run-name" maxlength="60" placeholder="Name, e.g. the class or the build" required>
+      <button class="primary">Start it</button></form>
+    <p class="hint">Forgot to switch before playing? Open the session and move it to the right playthrough.</p>`;
+  const done = async res => { if (res.error) return res; await afterRunChange(); if (location.hash !== '#playthroughs') location.hash = '#playthroughs'; return res; };
+  main.querySelectorAll('.runs button').forEach(b => b.onclick = async () => {
+    const id = b.closest('li').dataset.id;
+    let res;
+    if (b.dataset.act === 'select') res = await call('select_playthrough', id);
+    else if (b.dataset.act === 'ng') {
+      if (!confirm(`Start New Game+ of ${byId[id].label}? It becomes the playthrough you're on, with its own recaps.`)) return;
+      res = await call('new_game_plus', id);
+    } else if (b.dataset.act === 'rename') {
+      const name = prompt('New name', byId[id].label);
+      if (!name) return;
+      res = await call('rename_playthrough', id, name);
+    } else if (b.dataset.act === 'delete') res = await call('delete_playthrough', id);
+    res = await done(res);
+    if (res.error) showError(b.closest('.row'), res.error);
+  });
+  document.getElementById('new-run').onsubmit = async e => {
+    e.preventDefault();
+    const res = await done(await call('new_playthrough', document.getElementById('new-run-name').value));
+    if (res.error) showError(e.target, res.error);
+  };
+}
+
 // --- routing ------------------------------------------------------------------------
 
 async function route() {
@@ -578,6 +678,7 @@ async function route() {
     case 'timeline': return renderTimeline();
     case 'search': return renderSearch();
     case 'settings': return renderSettings();
+    case 'playthroughs': return renderPlaythroughs();
     default: return renderHome();
   }
 }

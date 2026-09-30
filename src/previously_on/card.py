@@ -24,7 +24,7 @@ from pathlib import Path
 from rapidfuzz import fuzz
 
 from .text import normalize
-from .session import SessionMeta, read_session, sessions_dir
+from .session import SessionMeta, read_session
 from .stats import SAME_AREA, BossStat, SessionStats, across_sessions, compute, format_duration
 
 WIDTH, HEIGHT = 1600, 900
@@ -84,9 +84,11 @@ class Playthrough:
         return [f for f in ranked if f.attempts > 1][:n]
 
 
-def gather(game: str, data_dir: Path | None) -> Playthrough:
-    directory = sessions_dir(game, data_dir)
-    logs = sorted(directory.glob("*.jsonl")) if directory.is_dir() else []
+def gather(game: str, data_dir: Path | None, playthrough: str | None = None) -> Playthrough:
+    """One playthrough's sessions (the current one when not given)."""
+    from .playthroughs import logs as playthrough_logs
+
+    logs = playthrough_logs(game, data_dir, playthrough)
     sessions = []
     for log in logs:
         meta, events = read_session(log)

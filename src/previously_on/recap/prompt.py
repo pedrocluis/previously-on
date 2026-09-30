@@ -75,9 +75,22 @@ notable items, where you are and what you were probably about to do.
 
 
 def build_user(
-    game_name: str, recap_notes: str, session_id: str, previous: PlaythroughState, transcript: str
+    game_name: str,
+    recap_notes: str,
+    session_id: str,
+    previous: PlaythroughState,
+    transcript: str,
+    cycle: int = 0,
 ) -> str:
     parts = [f"Game: {game_name}\nSession id: {session_id} (cite this session's events as {session_id}#n)"]
+    if cycle:
+        # The state below covers this cycle only; the player has been through
+        # the game before, so a place or person met again is not new to them.
+        parts.append(
+            f"This playthrough is New Game+ (cycle {cycle + 1}): the player has finished the game before with this "
+            "character, and the world has started over. The state covers this cycle only. Do not call a place, "
+            "boss or person new to the player; say only what this cycle's log shows."
+        )
     if recap_notes.strip():
         parts.append(f"Notes on how this game's events read:\n{recap_notes.strip()}")
     parts.append(

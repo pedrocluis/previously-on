@@ -15,7 +15,8 @@ from ..classify import normalize
 from ..events import Event, EventType
 from ..session import read_session
 from ..stats import compute
-from .store import list_records, read_record, sessions_dir
+from ..playthroughs import logs as playthrough_logs
+from .store import list_records, read_record
 
 Kind = str  # item | area | checkpoint | boss | quest | npc
 
@@ -78,18 +79,16 @@ def _entries_from_events(
     return out
 
 
-def build(game: str, data_dir: Path | None = None) -> Index:
+def build(game: str, data_dir: Path | None = None, playthrough: str | None = None) -> Index:
+    """One playthrough's index (the current one when not given)."""
     index = Index()
-    directory = sessions_dir(game, data_dir)
-    if not directory.is_dir():
-        return index
     logs: dict[str, tuple[datetime, list[Event]]] = {}
-    for path in sorted(directory.glob("*.jsonl")):
+    for path in playthrough_logs(game, data_dir, playthrough):
         sid = path.name.removesuffix(".jsonl")
         meta, events = read_session(path)
         logs[sid] = (meta.started, events)
         index.entries.extend(_entries_from_events(sid, meta.started, events, meta.duration, meta.closes_fights))
-    for path in list_records(game, data_dir):
+    for path in list_records(game, data_dir, playthrough):
         record = read_record(path)
         started, events = logs.get(record.session, (datetime.min, []))
         for c in record.recap.conversations:

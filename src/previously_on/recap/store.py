@@ -2,6 +2,9 @@
 ``<stamp>.jsonl``. The playthrough state is not a separate file — the newest
 record's state is the current state, and each record carries the state as it
 stood after its session, so re-running an old session re-chains cleanly.
+
+The chain runs within one playthrough (``playthroughs.py``): a second
+character or a New Game+ cycle starts from an empty state.
 """
 
 from __future__ import annotations
@@ -11,7 +14,8 @@ from datetime import datetime
 from pathlib import Path
 
 from ..games import GameProfile
-from ..session import default_data_dir, read_session, sessions_dir
+from ..playthroughs import Registry
+from ..session import default_data_dir, playthrough_of, read_session, sessions_dir
 from ..stats import compute
 from . import compact as compact_mod
 from .prompt import SYSTEM, build_user
@@ -39,25 +43,35 @@ def read_record(path: Path) -> RecapRecord:
     return RecapRecord.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def list_records(game: str, data_dir: Path | None = None) -> list[Path]:
-    """Recap records for a game, oldest first (stamps sort chronologically)."""
-    directory = sessions_dir(game, data_dir)
-    if not directory.is_dir():
-        return []
-    return sorted(directory.glob(f"*{RECAP_SUFFIX}"))
+def list_records(game: str, data_dir: Path | None = None, playthrough: str | None = None) -> list[Path]:
+    """Recap records of one playthrough (the current one when not given),
+    oldest first (stamps sort chronologically)."""
+    reg = Registry.load(game, data_dir)
+    logs = reg.logs(playthrough or reg.current_id)
+    return [recap_path(log) for log in logs if recap_path(log).is_file()]
 
 
-def latest_record(game: str, data_dir: Path | None = None) -> tuple[Path, RecapRecord] | None:
-    paths = list_records(game, data_dir)
+def latest_record(
+    game: str, data_dir: Path | None = None, playthrough: str | None = None
+) -> tuple[Path, RecapRecord] | None:
+    paths = list_records(game, data_dir, playthrough)
     if not paths:
         return None
     return paths[-1], read_record(paths[-1])
 
 
 def previous_state(session_path: Path) -> PlaythroughState:
-    """State after the newest session that precedes this one, or empty."""
+    """State after the newest session of the same playthrough that precedes
+    this one, or empty."""
     me = session_id(session_path)
-    older = [p for p in session_path.parent.glob(f"*{RECAP_SUFFIX}") if p.name.removesuffix(RECAP_SUFFIX) < me]
+    mine = playthrough_of(session_path)[0]
+    older = [
+        p
+        for p in session_path.parent.glob(f"*{RECAP_SUFFIX}")
+        if p.name.removesuffix(RECAP_SUFFIX) < me
+        and (log := p.with_name(p.name.removesuffix(RECAP_SUFFIX) + ".jsonl")).is_file()
+        and playthrough_of(log)[0] == mine
+    ]
     if not older:
         return PlaythroughState()
     return read_record(max(older)).recap.state
@@ -70,7 +84,9 @@ def summarize_session(session_path: Path, profile: GameProfile, provider: RecapP
     sid = session_id(session_path)
     previous = previous_state(session_path)
     transcript = compact_mod.compact(meta, events, stats)
-    user = build_user(profile.display_name, getattr(profile, "recap_notes", ""), sid, previous, transcript)
+    user = build_user(
+        profile.display_name, getattr(profile, "recap_notes", ""), sid, previous, transcript, cycle=meta.cycle
+    )
     recap, usage = provider.generate(SYSTEM, user)
     recap, dropped = verify(recap, events, previous, sid)
     record = RecapRecord(
