@@ -237,6 +237,9 @@ button.primary:disabled { background: var(--accent); color: oklch(0.17 0.02 40);
 .places { display: flex; flex-wrap: wrap; column-gap: 0.6em; row-gap: 2px; font-size: 16px; font-weight: 550; line-height: 1.7; margin: 0; }
 .places span { white-space: nowrap; }
 .places span:not(:last-child)::after { content: "/"; color: var(--accent-deep); margin-left: 0.6em; font-weight: 400; }
+.last-session .places { margin-top: 18px; }
+.last-session .hint { margin: 10px 0 0; }
+.last-session .row { margin-top: 18px; }
 
 .talk li { padding: 14px 0; }
 .talk .who { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--text); }
